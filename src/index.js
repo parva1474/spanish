@@ -1,36 +1,28 @@
 export default {
   async fetch(request, env, ctx) {
-    // برای دیباگ کردن: بررسی کنیم آیا درخواست POST هست یا نه
-    if (request.method !== "POST") {
-      return new Response("Bot is running! Send POST updates.");
+    if (request.method !== "POST") return new Response("Bot is running.");
+
+    const update = await request.json();
+    if (!update.message) return new Response("OK");
+
+    const chatId = update.message.chat.id;
+    const text = update.message.text || "";
+
+    // ۱. اولویت اول: هندل کردن دستورات (commands)
+    if (text === "/start") {
+      await sendMessage(env, chatId, "سلام! خوش آمدی به ربات اسپانیایی. من آماده‌ام تا از A1 تا C2 بهت آموزش بدم.");
+      return new Response("OK");
     }
 
-    try {
-      const update = await request.json();
-      
-      // لاگ کردن دریافت پیام برای دیباگ
-      console.log("Received update:", JSON.stringify(update));
-
-      if (update.message) {
-        const chatId = update.message.chat.id;
-        const text = update.message.text;
-
-        if (text === "/start") {
-          await sendMessage(env, chatId, "سلام! ربات فعال شد و پیام شما را دریافت کرد.");
-        }
-      }
-      
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { "content-type": "application/json" },
-      });
-    } catch (e) {
-      return new Response("Error: " + e.message, { status: 500 });
-    }
+    // ۲. اولویت دوم: اگر دستور نبود، پیام عادیه (اینجا کدهای قبلی رو پاک کن که دیگه شرح در متن نده!)
+    await sendMessage(env, chatId, "من این پیام شما رو دریافت کردم: " + text);
+    
+    return new Response(JSON.stringify({ ok: true }));
   },
 };
 
 async function sendMessage(env, chatId, text) {
-  const BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"; // توکن را اینجا جایگزین کن
+  const BOT_TOKEN = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0";
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
