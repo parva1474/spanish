@@ -5,4 +5,4 @@ compatibility_date = "2026-08-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "spanish-bot-db"
-database_id = "9902af4a69cdffc5a087b2da0a0a5a4d"
+database_id = "df8d82a0-b568-4641-bce8-334518fd6977"
