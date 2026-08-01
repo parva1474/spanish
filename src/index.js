@@ -22,7 +22,7 @@ export default {
 };
 
 async function sendMessage(env, chatId, text) {
-  const BOT_TOKEN = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0";
+  const BOT_TOKEN = "Spanishtoken:";
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
