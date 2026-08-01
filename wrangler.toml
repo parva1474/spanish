@@ -1,4 +1,4 @@
-name = "spanish-bot"
+name = "spanish"
 main = "src/index.js"
 compatibility_date = "2026-08-01"
 
