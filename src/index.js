@@ -1,9 +1,9 @@
-// سوالات رو اینجا با "next" مشخص کردیم تا ربات گیج نشه
+// لیست سوالات (در اینجا فقط ID و متن و گزینه و جواب صحیح هست)
 const questions = [
-  { id: "q1", next: "q2", text: "1. 'سلام' به اسپانیایی چی میشه؟", options: ["Hola", "Adiós"], correct: 0 },
-  { id: "q2", next: "q3", text: "2. 'صبح بخیر' به اسپانیایی چی میشه؟", options: ["Buenas noches", "Buenos días"], correct: 1 },
-  { id: "q3", next: "q4", text: "3. معنی کلمه 'Gracias' چیه؟", options: ["ممنون", "ببخشید"], correct: 0 },
-  { id: "q4", next: "finish", text: "4. چطور می‌گوییم 'اسم من... است'؟", options: ["Me llamo...", "Tengo..."], correct: 0 }
+  { id: "q1", text: "1. 'سلام' به اسپانیایی چی میشه؟", options: ["Hola", "Adiós"], correct: 0 },
+  { id: "q2", text: "2. 'صبح بخیر' به اسپانیایی چی میشه؟", options: ["Buenas noches", "Buenos días"], correct: 1 },
+  { id: "q3", text: "3. معنی کلمه 'Gracias' چیه؟", options: ["ممنون", "ببخشید"], correct: 0 },
+  { id: "q4", text: "4. چطور می‌گوییم 'اسم من... است'؟", options: ["Me llamo...", "Tengo..."], correct: 0 }
 ];
 
 export default {
@@ -12,16 +12,17 @@ export default {
     const update = await request.json();
     const BOT_TOKEN = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0";
 
-    // شروع بازی
+    // ۱. شروع تست
     if (update.message?.text === "/start") {
-      await sendBotMessage(BOT_TOKEN, update.message.chat.id, "شروع تست:", {
+      await sendBotMessage(BOT_TOKEN, update.message.chat.id, "برای شروع تست بزن:", {
         inline_keyboard: [[{ text: "📝 شروع", callback_data: "q1_0" }]]
       });
     }
 
+    // ۲. مدیریت کلیک روی دکمه‌ها
     if (update.callback_query) {
       const query = update.callback_query;
-      const [qid, score] = query.data.split("_");
+      const [qid, score] = query.data.split("_"); // مثلا q2_1
 
       await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
         method: "POST",
@@ -29,38 +30,37 @@ export default {
         body: JSON.stringify({ callback_query_id: query.id })
       });
 
-      // پردازش جواب غلط
-      if (query.data === "wrong") {
+      // اگر کاربر غلط زد
+      if (qid === "wrong") {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ callback_query_id: query.id, text: "❌ غلط بود!", show_alert: true })
+          body: JSON.stringify({ callback_query_id: query.id, text: "❌ اشتباه بود!", show_alert: true })
         });
         return new Response("OK");
       }
 
-      // پیدا کردن سوال فعلی
-      const currentQ = questions.find(q => q.id === qid);
-      
-      if (currentQ) {
-        // آیا سوال بعدی داریم یا تموم شده؟
-        if (currentQ.next !== "finish") {
-          const nextQ = questions.find(q => q.id === currentQ.next);
-          
-          await sendBotMessage(BOT_TOKEN, query.message.chat.id, currentQ.text, {
-            inline_keyboard: [
-              // اگر درست بود: امتیاز رو +1 کن و برو به سوال بعدی (nextQ.id)
-              [{ text: currentQ.options[0], callback_data: (currentQ.correct === 0 ? `${currentQ.next}_${parseInt(score) + 1}` : "wrong") }],
-              [{ text: currentQ.options[1], callback_data: (currentQ.correct === 1 ? `${currentQ.next}_${parseInt(score) + 1}` : "wrong") }]
-            ]
-          });
-        } 
-        // پایان تست
-        else {
-          const finalScore = (currentQ.correct === 0) ? (parseInt(score) + 1) : parseInt(score);
-          await sendBotMessage(BOT_TOKEN, query.message.chat.id, `🎉 تبریک! تست تمام شد.\nامتیاز نهایی: ${finalScore} از ${questions.length}`);
-        }
+      // اگر تست تمام شد
+      if (qid === "finish") {
+        await sendBotMessage(BOT_TOKEN, query.message.chat.id, `🎉 تبریک! تست تمام شد.\nامتیاز نهایی: ${score} از ${questions.length}`);
+        return new Response("OK");
       }
+
+      // پیدا کردن سوال بعدی
+      const currentQ = questions.find(q => q.id === qid);
+      const currentIndex = questions.indexOf(currentQ);
+      const nextIndex = currentIndex + 1;
+      
+      // تعیین دیتای دکمه بعدی (اگر سوال بعدی وجود داشت، آیدی سوال بعدی رو بفرست، وگرنه finish)
+      const nextData = (nextIndex < questions.length) ? questions[nextIndex].id : "finish";
+
+      // ارسال سوال جدید
+      await sendBotMessage(BOT_TOKEN, query.message.chat.id, currentQ.text, {
+        inline_keyboard: [
+          [{ text: currentQ.options[0], callback_data: (currentQ.correct === 0 ? `${nextData}_${parseInt(score) + 1}` : "wrong") }],
+          [{ text: currentQ.options[1], callback_data: (currentQ.correct === 1 ? `${nextData}_${parseInt(score) + 1}` : "wrong") }]
+        ]
+      });
     }
     return new Response("OK");
   }
