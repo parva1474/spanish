@@ -1,49 +1,53 @@
 export default {
   async fetch(request, env, ctx) {
-    if (request.method !== "POST") return new Response("Bot is active.");
+    // ۱. حتما باید متد POST باشه (چون تلگرام با POST پیام میفرسته)
+    if (request.method !== "POST") return new Response("OK");
 
     const update = await request.json();
     
-    // توکن را اینجا جایگذاری کن (هرچند بعدا حتما توی Secrets بذارش که امن بمونه)
-    const BOT_TOKEN = "TOKEN_RA_INJA_GZAR"; 
+    // توکن را دقیقاً اینجا بنویس (مثلاً: "123456:ABC-DEF...")
+    const BOT_TOKEN = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0"; 
 
-    // ۱. هندل کردن پیام‌های متنی (مثل /start)
-    if (update.message) {
-      const chatId = update.message.chat.id;
-      const text = update.message.text;
-
-      if (text === "/start") {
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: "سلام! به ربات آموزش اسپانیایی خوش آمدی. برای شروع، لطفا دکمه زیر را بزن:",
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: "📝 شروع تعیین سطح", callback_data: "placement_test" }]
-              ]
-            }
-          }),
-        });
-      }
+    // --- مدیریت پیام‌های متنی (/start) ---
+    if (update.message && update.message.text === "/start") {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: update.message.chat.id,
+          text: "سلام! به ربات اسپانیایی خوش اومدی. برای تعیین سطح روی دکمه بزن:",
+          reply_markup: {
+            inline_keyboard: [[{ text: "📝 شروع تعیین سطح", callback_data: "placement_test" }]]
+          }
+        }),
+      });
+      return new Response("OK");
     }
 
-    // ۲. هندل کردنِ زدنِ دکمه (Callback Query)
+    // --- مدیریت کلیک روی دکمه (Callback Query) ---
     if (update.callback_query) {
-      const chatId = update.callback_query.message.chat.id;
-      const data = update.callback_query.data;
+      const query = update.callback_query;
+      const chatId = query.message.chat.id;
 
-      if (data === "placement_test") {
+      // ابتدا لودینگ دکمه رو بردار
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callback_query_id: query.id })
+      });
+
+      // و بعد پیام جدید رو بفرست
+      if (query.data === "placement_test") {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: chatId,
-            text: "بسیار عالی! بیا سطح زبانت رو با چند سوال کوتاه بسنجیم. آماده‌ای؟"
+            text: "خیلی خب، بریم سراغ سوال اول: 'سلام' به اسپانیایی چی میشه؟"
           }),
         });
       }
+      return new Response("OK");
     }
 
     return new Response("OK");
