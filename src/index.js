@@ -1,27 +1,36 @@
 export default {
   async fetch(request, env, ctx) {
-    if (request.method !== "POST") return new Response("Hello!");
-
-    const update = await request.json();
-    if (update.message) {
-      const chatId = update.message.chat.id;
-      const text = update.message.text;
-
-      // نمونه کد برای خواندن از دیتابیس (مثلاً برای خوش‌آمدگویی یا سطح کاربر)
-      if (text === "/start") {
-        await env.DB.prepare("INSERT OR IGNORE INTO users (telegram_id) VALUES (?)").bind(chatId).run();
-        await sendMessage(chatId, "سلام! به ربات آموزش زبان اسپانیایی خوش آمدید. ما از سطح A1 شروع می‌کنیم.");
-      }
+    // برای دیباگ کردن: بررسی کنیم آیا درخواست POST هست یا نه
+    if (request.method !== "POST") {
+      return new Response("Bot is running! Send POST updates.");
     }
 
-    return new Response(JSON.stringify({ ok: true }), {
-      headers: { "content-type": "application/json" },
-    });
+    try {
+      const update = await request.json();
+      
+      // لاگ کردن دریافت پیام برای دیباگ
+      console.log("Received update:", JSON.stringify(update));
+
+      if (update.message) {
+        const chatId = update.message.chat.id;
+        const text = update.message.text;
+
+        if (text === "/start") {
+          await sendMessage(env, chatId, "سلام! ربات فعال شد و پیام شما را دریافت کرد.");
+        }
+      }
+      
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "content-type": "application/json" },
+      });
+    } catch (e) {
+      return new Response("Error: " + e.message, { status: 500 });
+    }
   },
 };
 
-async function sendMessage(chatId, text) {
-  const BOT_TOKEN = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0"; // اینجا توکن رباتت را بگذار
+async function sendMessage(env, chatId, text) {
+  const BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"; // توکن را اینجا جایگزین کن
   await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
