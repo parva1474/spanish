@@ -1,8 +1,9 @@
+// سوالات رو اینجا با "next" مشخص کردیم تا ربات گیج نشه
 const questions = [
-  { id: "q1", text: "1. 'سلام' به اسپانیایی چی میشه؟", options: ["Hola", "Adiós"], correct: 0 },
-  { id: "q2", text: "2. 'صبح بخیر' به اسپانیایی چی میشه؟", options: ["Buenas noches", "Buenos días"], correct: 1 },
-  { id: "q3", text: "3. معنی کلمه 'Gracias' چیه؟", options: ["ممنون", "ببخشید"], correct: 0 },
-  { id: "q4", text: "4. چطور می‌گوییم 'اسم من... است'؟", options: ["Me llamo...", "Tengo..."], correct: 0 }
+  { id: "q1", next: "q2", text: "1. 'سلام' به اسپانیایی چی میشه؟", options: ["Hola", "Adiós"], correct: 0 },
+  { id: "q2", next: "q3", text: "2. 'صبح بخیر' به اسپانیایی چی میشه؟", options: ["Buenas noches", "Buenos días"], correct: 1 },
+  { id: "q3", next: "q4", text: "3. معنی کلمه 'Gracias' چیه؟", options: ["ممنون", "ببخشید"], correct: 0 },
+  { id: "q4", next: "finish", text: "4. چطور می‌گوییم 'اسم من... است'؟", options: ["Me llamo...", "Tengo..."], correct: 0 }
 ];
 
 export default {
@@ -14,13 +15,13 @@ export default {
     // شروع بازی
     if (update.message?.text === "/start") {
       await sendBotMessage(BOT_TOKEN, update.message.chat.id, "شروع تست:", {
-        inline_keyboard: [[{ text: "📝 شروع", callback_data: "q1_0" }]] // امتیاز اولیه 0
+        inline_keyboard: [[{ text: "📝 شروع", callback_data: "q1_0" }]]
       });
     }
 
     if (update.callback_query) {
       const query = update.callback_query;
-      const [qid, score] = query.data.split("_"); // جدا کردن شماره سوال و امتیاز
+      const [qid, score] = query.data.split("_");
 
       await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
         method: "POST",
@@ -42,21 +43,19 @@ export default {
       const currentQ = questions.find(q => q.id === qid);
       
       if (currentQ) {
-        const nextIndex = questions.indexOf(currentQ) + 1;
-        
-        // اگر هنوز سوالی مونده
-        if (nextIndex < questions.length) {
-          const nextQ = questions[nextIndex];
+        // آیا سوال بعدی داریم یا تموم شده؟
+        if (currentQ.next !== "finish") {
+          const nextQ = questions.find(q => q.id === currentQ.next);
           
           await sendBotMessage(BOT_TOKEN, query.message.chat.id, currentQ.text, {
             inline_keyboard: [
-              // اگر درست بود: امتیاز رو +1 کن
-              [{ text: currentQ.options[0], callback_data: (currentQ.correct === 0 ? `${nextQ.id}_${parseInt(score) + 1}` : "wrong") }],
-              [{ text: currentQ.options[1], callback_data: (currentQ.correct === 1 ? `${nextQ.id}_${parseInt(score) + 1}` : "wrong") }]
+              // اگر درست بود: امتیاز رو +1 کن و برو به سوال بعدی (nextQ.id)
+              [{ text: currentQ.options[0], callback_data: (currentQ.correct === 0 ? `${currentQ.next}_${parseInt(score) + 1}` : "wrong") }],
+              [{ text: currentQ.options[1], callback_data: (currentQ.correct === 1 ? `${currentQ.next}_${parseInt(score) + 1}` : "wrong") }]
             ]
           });
         } 
-        // اگر تست تموم شد (آخرین سوال)
+        // پایان تست
         else {
           const finalScore = (currentQ.correct === 0) ? (parseInt(score) + 1) : parseInt(score);
           await sendBotMessage(BOT_TOKEN, query.message.chat.id, `🎉 تبریک! تست تمام شد.\nامتیاز نهایی: ${finalScore} از ${questions.length}`);
