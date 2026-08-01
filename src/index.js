@@ -1,8 +1,8 @@
 const questions = [
-  { id: "q1", text: "1. 'سلام' به اسپانیایی چی میشه؟", options: ["Hola", "Adiós"], correct: 0 },
-  { id: "q2", text: "2. 'صبح بخیر' به اسپانیایی چی میشه؟", options: ["Buenas noches", "Buenos días"], correct: 1 },
-  { id: "q3", text: "3. معنی کلمه 'Gracias' چیه؟", options: ["ممنون", "ببخشید"], correct: 0 },
-  { id: "q4", text: "4. چطور می‌گوییم 'اسم من... است'؟", options: ["Me llamo...", "Tengo..."], correct: 0 }
+  { id: "q1", text: "۱. 'سلام' به اسپانیایی چی میشه؟", options: ["Hola", "Adiós"], correct: 0 },
+  { id: "q2", text: "۲. 'صبح بخیر' به اسپانیایی چی میشه؟", options: ["Buenas noches", "Buenos días"], correct: 1 },
+  { id: "q3", text: "۳. معنی '¿Cómo estás?' چیه؟", options: ["چطوری؟", "خداحافظ"], correct: 0 }, // سوال جدید
+  { id: "q4", text: "۴. چطور می‌گوییم 'اسم من... است'؟", options: ["Me llamo...", "Tengo..."], correct: 0 }
 ];
 
 export default {
@@ -11,62 +11,65 @@ export default {
     const update = await request.json();
     const BOT_TOKEN = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0";
 
+    // ۱. اگر استارت زد، سوال اول رو بفرست
     if (update.message?.text === "/start") {
-      await sendBotMessage(BOT_TOKEN, update.message.chat.id, "شروع تعیین سطح:", {
-        inline_keyboard: [[{ text: "📝 شروع", callback_data: "q1_0" }]]
-      });
+      await sendQuestion(BOT_TOKEN, update.message.chat.id, questions[0], 0);
     }
 
+    // ۲. مدیریت پاسخ‌ها
     if (update.callback_query) {
       const query = update.callback_query;
-      const data = query.data; // فرمت: qX_score یا finish_score یا wrong
-      
-      // ۱. اگر غلط بود
+      const data = query.data; // فرمت: "qID_score"
+
+      // حذف لودینگ
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callback_query_id: query.id })
+      });
+
       if (data === "wrong") {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ callback_query_id: query.id, text: "❌ اشتباه بود!", show_alert: true })
         });
-        return new Response("OK");
+        return;
       }
 
-      // ۲. اگر تست تمام شد
-      if (data.startsWith("finish_")) {
-        const score = data.split("_")[1];
+      // تحلیل داده‌ها
+      const [qid, currentScore] = data.split("_");
+      const score = parseInt(currentScore);
+      const currentIndex = questions.findIndex(q => q.id === qid);
+
+      // اگر سوال بعدی هست
+      if (currentIndex < questions.length - 1) {
+        const nextQ = questions[currentIndex + 1];
+        await sendQuestion(BOT_TOKEN, query.message.chat.id, nextQ, score);
+      } else {
+        // پایان تست
         await sendBotMessage(BOT_TOKEN, query.message.chat.id, `🎉 تبریک! تست تمام شد.\nامتیاز نهایی: ${score} از ${questions.length}`);
-        return new Response("OK");
-      }
-
-      // ۳. اگر سوال بعدی وجود داشت
-      const [qid, score] = data.split("_");
-      const currentQ = questions.find(q => q.id === qid);
-      
-      if (currentQ) {
-        const currentIndex = questions.indexOf(currentQ);
-        const nextIndex = currentIndex + 1;
-        
-        // آیا سوال بعدی داریم؟
-        if (nextIndex < questions.length) {
-          const nextQ = questions[nextIndex];
-          
-          await sendBotMessage(BOT_TOKEN, query.message.chat.id, currentQ.text, {
-            inline_keyboard: [
-              [{ text: currentQ.options[0], callback_data: (currentQ.correct === 0 ? `${nextQ.id}_${parseInt(score) + 1}` : "wrong") }],
-              [{ text: currentQ.options[1], callback_data: (currentQ.correct === 1 ? `${nextQ.id}_${parseInt(score) + 1}` : "wrong") }]
-            ]
-          });
-        } 
-        // این بخش برای سوال آخره (ق4)
-        else {
-           const finalScore = (currentQ.correct === 0) ? (parseInt(score) + 1) : parseInt(score);
-           await sendBotMessage(BOT_TOKEN, query.message.chat.id, `🎉 تبریک! تست تمام شد.\nامتیاز نهایی: ${finalScore} از ${questions.length}`);
-        }
       }
     }
     return new Response("OK");
   }
 };
+
+// تابع ارسال سوال
+async function sendQuestion(token, chatId, qObj, currentScore) {
+  const nextIndex = questions.findIndex(q => q.id === qObj.id) + 1;
+  const nextQ = questions[nextIndex];
+  
+  // دکمه‌ها
+  const buttons = qObj.options.map((opt, index) => {
+    // اگر جواب درسته، بفرستش به سوال بعدی با امتیاز +1
+    // اگر غلطه، بفرستش به "wrong"
+    const nextData = (nextIndex < questions.length) ? `${nextQ.id}_${index === qObj.correct ? currentScore + 1 : currentScore}` : `finish_${index === qObj.correct ? currentScore + 1 : currentScore}`;
+    return [{ text: opt, callback_data: index === qObj.correct ? nextData : "wrong" }];
+  });
+
+  await sendBotMessage(token, chatId, qObj.text, { inline_keyboard: buttons });
+}
 
 async function sendBotMessage(token, chatId, text, reply_markup = null) {
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
