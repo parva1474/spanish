@@ -1,39 +1,51 @@
 export default {
   async fetch(request, env, ctx) {
-    // ۱. اگر متد درخواست POST نباشد، پاسخ اولیه بده
-    if (request.method !== "POST") {
-      return new Response("Bot is active and listening.");
-    }
+    if (request.method !== "POST") return new Response("Bot is active.");
 
-    try {
-      // ۲. دریافت اطلاعات از تلگرام
-      const update = await request.json();
-      
-      // ۳. بررسی اینکه پیام وجود دارد
-      if (!update.message || !update.message.text) {
-        return new Response("OK");
-      }
+    const update = await request.json();
+    
+    // توکن را اینجا جایگذاری کن (هرچند بعدا حتما توی Secrets بذارش که امن بمونه)
+    const BOT_TOKEN = "TOKEN_RA_INJA_GZAR"; 
 
+    // ۱. هندل کردن پیام‌های متنی (مثل /start)
+    if (update.message) {
       const chatId = update.message.chat.id;
       const text = update.message.text;
 
-      // ۴. توکن خودت را اینجا مستقیماً کپی کن (برای تست نهایی)
-      // اگر با این کار ربات جواب داد، یعنی مشکل از بخش Variable کلودفلر بوده
-      const BOT_TOKEN = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0";
-
-      // ۵. ارسال پاسخ به تلگرام
-      const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: `سلام! ربات متصل است. شما گفتید: ${text}`
-        }),
-      });
-
-      return new Response("OK");
-    } catch (err) {
-      return new Response("Error: " + err.message);
+      if (text === "/start") {
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: "سلام! به ربات آموزش اسپانیایی خوش آمدی. برای شروع، لطفا دکمه زیر را بزن:",
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "📝 شروع تعیین سطح", callback_data: "placement_test" }]
+              ]
+            }
+          }),
+        });
+      }
     }
+
+    // ۲. هندل کردنِ زدنِ دکمه (Callback Query)
+    if (update.callback_query) {
+      const chatId = update.callback_query.message.chat.id;
+      const data = update.callback_query.data;
+
+      if (data === "placement_test") {
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: "بسیار عالی! بیا سطح زبانت رو با چند سوال کوتاه بسنجیم. آماده‌ای؟"
+          }),
+        });
+      }
+    }
+
+    return new Response("OK");
   },
 };
