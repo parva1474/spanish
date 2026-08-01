@@ -5,76 +5,74 @@ export default {
     const update = await request.json();
     const BOT_TOKEN = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0"; 
 
-    // --- مدیریت پیام‌های متنی ---
-    if (update.message) {
-      const chatId = update.message.chat.id;
-      if (update.message.text === "/start") {
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: "سلام! برای تعیین سطح دکمه زیر را بزن:",
-            reply_markup: {
-              inline_keyboard: [[{ text: "📝 شروع تعیین سطح", callback_data: "placement_test" }]]
-            }
-          }),
-        });
-      }
+    if (update.message?.text === "/start") {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: update.message.chat.id,
+          text: "سلام! به ربات اسپانیایی خوش اومدی. شروع کنیم؟",
+          reply_markup: {
+            inline_keyboard: [[{ text: "📝 شروع تعیین سطح", callback_data: "q1" }]]
+          }
+        }),
+      });
     }
 
-    // --- مدیریت دکمه‌ها ---
     if (update.callback_query) {
       const query = update.callback_query;
       const chatId = query.message.chat.id;
       const data = query.data;
 
-      // ۱. اگر روی شروع کلیک کرد
-      if (data === "placement_test") {
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ callback_query_id: query.id })
-        });
-        
+      // سوال اول
+      if (data === "q1") {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: chatId,
-            text: "سوال اول: 'سلام' به اسپانیایی چی میشه؟",
+            text: "سوال ۱: 'سلام' به اسپانیایی چی میشه؟",
             reply_markup: {
               inline_keyboard: [
-                [{ text: "Hola", callback_data: "ans_correct" }],
-                [{ text: "Adios", callback_data: "ans_wrong" }],
-                [{ text: "Gracias", callback_data: "ans_wrong" }]
+                [{ text: "Hola", callback_data: "q1_correct" }],
+                [{ text: "Adios", callback_data: "q1_wrong" }]
               ]
             }
           }),
         });
-      } 
-      // ۲. اگر جواب درست رو زد
-      else if (data === "ans_correct") {
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
+      }
+      // درست بودن سوال اول -> رفتن به سوال دوم
+      else if (data === "q1_correct") {
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            callback_query_id: query.id, 
-            text: "✅ آفرین! درست بود.", 
-            show_alert: true 
-          })
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: "آفرین! درست بود. حالا سوال ۲: 'خداحافظ' چی میشه؟",
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: "Adios", callback_data: "q2_correct" }],
+                [{ text: "Hola", callback_data: "q2_wrong" }]
+              ]
+            }
+          }),
         });
       }
-      // ۳. اگر جواب غلط رو زد
-      else if (data === "ans_wrong") {
+      // جواب غلط
+      else if (data === "q1_wrong" || data === "q2_wrong") {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            callback_query_id: query.id, 
-            text: "❌ اشتباه بود! دوباره امتحان کن.", 
-            show_alert: true 
-          })
+          body: JSON.stringify({ callback_query_id: query.id, text: "❌ غلط بود، دوباره سعی کن!", show_alert: true })
+        });
+        return new Response("OK");
+      }
+      // پایان تعیین سطح
+      else if (data === "q2_correct") {
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: chatId, text: "تبریک! تعیین سطح تمام شد. سطح شما: مبتدی" })
         });
       }
     }
