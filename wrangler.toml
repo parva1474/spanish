@@ -1,8 +1,8 @@
 name = "spanish"
 main = "src/index.js"
-compatibility_date = "2026-08-01"
+compatibility_date = "2026-08-02"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "spanish-bot-db"
-database_id = "df8d82a0-b568-4641-bce8-334518fd6977"
+database_id = "Df8d82a0-b568-4641-bce8-334518fd6977"
