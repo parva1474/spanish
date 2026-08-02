@@ -11,7 +11,7 @@ const hardQuestions = [
 ];
 
 // حتماً توکن جدید را اینجا بگذار
-const BOT_TOKEN = "TOKEN_جدید_را_اینجا_بگذار";
+const BOT_TOKEN = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0";
 
 export default {
   async fetch(request, env, ctx) {
