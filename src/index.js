@@ -1,17 +1,21 @@
-// سوالات را برای تست، تعدادشان را بیشتر کردم تا راحت به سطح hard برسی
 const easyQuestions = [
   { text: "۱. سلام به اسپانیایی؟", options: ["Hola", "Adiós"], correct: 0 },
   { text: "۲. صبح بخیر؟", options: ["Buenas noches", "Buenos días"], correct: 1 },
-  { text: "۳. ممنون؟", options: ["Gracias", "De nada"], correct: 0 }
+  { text: "۳. ممنون؟", options: ["Gracias", "De nada"], correct: 0 },
+  { text: "۴. اسم من...؟", options: ["Me llamo...", "Tengo..."], correct: 0 },
+  { text: "۵. خداحافظ؟", options: ["Adiós", "Hola"], correct: 0 }
 ];
 
 const hardQuestions = [
-  { text: "۴. فعل 'بودن' برای 'ما' (ما هستیم)؟", options: ["Somos", "Sois"], correct: 0 },
-  { text: "۵. معنی 'Ir'؟", options: ["رفتن", "خوردن"], correct: 0 }
+  { text: "۶. فعل بودن (ما هستیم)؟", options: ["Somos", "Sois"], correct: 0 },
+  { text: "۷. معنی Ir؟", options: ["رفتن", "خوردن"], correct: 0 },
+  { text: "۸. قرمز؟", options: ["Rojo", "Azul"], correct: 0 },
+  { text: "۹. مدرسه؟", options: ["Casa", "Escuela"], correct: 1 },
+  { text: "۱۰. عدد ۵؟", options: ["Tres", "Cinco"], correct: 1 }
 ];
 
-// حتماً توکن جدید را اینجا بگذار
-const BOT_TOKEN = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0";
+// حتماً توکن جدید را اینجا بگذار (بعد از باطل کردن توکن قبلی)
+const BOT_TOKEN = "TOKEN_جدید";
 
 export default {
   async fetch(request, env, ctx) {
@@ -24,28 +28,36 @@ export default {
 
     if (update.callback_query) {
       const q = update.callback_query;
-      const [action, index, score] = q.data.split("_");
+      const [action, index, score, level] = q.data.split("_");
       const s = parseInt(score);
       const i = parseInt(index);
 
-      // جلوگیری از لودینگ بی‌نهایت
       await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ callback_query_id: q.id, text: action === "wrong" ? "❌ اشتباه بود!" : "✅ درست بود!", show_alert: action === "wrong" })
+        body: JSON.stringify({ callback_query_id: q.id })
       });
 
       if (action === "correct") {
         const nextScore = s + 1;
-        const nextIndex = i + 1;
-        const level = (nextScore >= 2) ? "hard" : "easy"; // برای تست، سطح را روی 2 گذاشتم
-        const list = (level === "hard") ? hardQuestions : easyQuestions;
+        let nextIndex = i + 1;
+        let nextLevel = level;
+
+        // منطق تغییر سطح
+        if (level === "easy" && nextScore >= 3) {
+            nextLevel = "hard";
+            nextIndex = 0; // ریست کردن سوالات از اول برای سطح سخت
+        }
+
+        const list = (nextLevel === "hard") ? hardQuestions : easyQuestions;
 
         if (nextIndex < list.length) {
-          await sendQuestion(q.message.chat.id, nextIndex, nextScore, level);
+          await sendQuestion(q.message.chat.id, nextIndex, nextScore, nextLevel);
         } else {
-          await sendMessage(q.message.chat.id, `🎉 تمام شد! امتیاز نهایی: ${nextScore}`);
+          await sendMessage(q.message.chat.id, `🎉 تموم شد! سطح: ${level}\nامتیاز نهایی: ${nextScore}`);
         }
+      } else {
+        await sendMessage(q.message.chat.id, "❌ غلط بود! دوباره فکر کن.");
       }
     }
     return new Response("OK");
@@ -66,7 +78,7 @@ async function sendQuestion(chatId, index, score, level) {
         inline_keyboard: [
           q.options.map((opt, i) => ({
             text: opt,
-            callback_data: (i === q.correct) ? `correct_${index}_${score}` : `wrong_${index}_${score}`
+            callback_data: (i === q.correct) ? `correct_${index}_${score}_${level}` : `wrong_${index}_${score}_${level}`
           }))
         ]
       }
