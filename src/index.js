@@ -1,195 +1,83 @@
-const easy = ["سلام؟", "۵؟"];
-const hard = ["فعل بودن؟", "معنی Ir؟"];
+// سوالات را برای تست، تعدادشان را بیشتر کردم تا راحت به سطح hard برسی
+const easyQuestions = [
+  { text: "۱. سلام به اسپانیایی؟", options: ["Hola", "Adiós"], correct: 0 },
+  { text: "۲. صبح بخیر؟", options: ["Buenas noches", "Buenos días"], correct: 1 },
+  { text: "۳. ممنون؟", options: ["Gracias", "De nada"], correct: 0 }
+];
+
+const hardQuestions = [
+  { text: "۴. فعل 'بودن' برای 'ما' (ما هستیم)؟", options: ["Somos", "Sois"], correct: 0 },
+  { text: "۵. معنی 'Ir'؟", options: ["رفتن", "خوردن"], correct: 0 }
+];
+
+// حتماً توکن جدید را اینجا بگذار
+const BOT_TOKEN = "TOKEN_جدید_را_اینجا_بگذار";
 
 export default {
   async fetch(request, env, ctx) {
-    try {
-      const data = await request.json();
+    if (request.method !== "POST") return new Response("OK");
+    const update = await request.json();
 
-      // توکن از Secret کلودفلر خوانده می‌شود
-      const BOT_TOKEN = env.Spanishtoken;
-
-      console.log("دریافت شد:", JSON.stringify(data));
-
-      // شروع بازی
-      if (data.message?.text === "/start") {
-        await sendQuestion(
-          BOT_TOKEN,
-          data.message.chat.id,
-          0,
-          0
-        );
-      }
-
-      // کلیک روی دکمه‌ها
-      else if (data.callback_query) {
-        const callback = data.callback_query;
-
-        // برداشتن حالت Loading دکمه
-        await answerCallback(
-          BOT_TOKEN,
-          callback.id
-        );
-
-        const parts = callback.data.split("_");
-
-        const action = parts[0];
-        const idx = parseInt(parts[1]);
-        const score = parseInt(parts[2]);
-
-        let newScore = score;
-
-        // فقط جواب درست امتیاز می‌دهد
-        if (action === "correct") {
-          newScore = score + 1;
-        }
-
-        // رفتن به سؤال بعدی
-        const nextIdx = idx + 1;
-
-        await sendQuestion(
-          BOT_TOKEN,
-          callback.message.chat.id,
-          nextIdx,
-          newScore
-        );
-      }
-
-      return new Response("OK");
-
-    } catch (e) {
-      console.error("خطا:", e);
-
-      return new Response(
-        "Error: " + e.message,
-        { status: 500 }
-      );
+    if (update.message?.text === "/start") {
+      await sendQuestion(update.message.chat.id, 0, 0, "easy");
     }
+
+    if (update.callback_query) {
+      const q = update.callback_query;
+      const [action, index, score] = q.data.split("_");
+      const s = parseInt(score);
+      const i = parseInt(index);
+
+      // جلوگیری از لودینگ بی‌نهایت
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callback_query_id: q.id, text: action === "wrong" ? "❌ اشتباه بود!" : "✅ درست بود!", show_alert: action === "wrong" })
+      });
+
+      if (action === "correct") {
+        const nextScore = s + 1;
+        const nextIndex = i + 1;
+        const level = (nextScore >= 2) ? "hard" : "easy"; // برای تست، سطح را روی 2 گذاشتم
+        const list = (level === "hard") ? hardQuestions : easyQuestions;
+
+        if (nextIndex < list.length) {
+          await sendQuestion(q.message.chat.id, nextIndex, nextScore, level);
+        } else {
+          await sendMessage(q.message.chat.id, `🎉 تمام شد! امتیاز نهایی: ${nextScore}`);
+        }
+      }
+    }
+    return new Response("OK");
   }
 };
 
+async function sendQuestion(chatId, index, score, level) {
+  const list = (level === "hard") ? hardQuestions : easyQuestions;
+  const q = list[index];
 
-// ============================
-// ارسال سؤال
-// ============================
-
-async function sendQuestion(token, chatId, idx, score) {
-
-  // سؤال‌های ساده
-  if (idx < easy.length) {
-
-    await sendMessage(token, chatId, {
-      text:
-        `🟢 سؤال ساده\n\n` +
-        `امتیاز: ${score}\n\n` +
-        `${easy[idx]}`,
-
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: `امتیاز: ${score} | سطح: ${level}\n\n${q.text}`,
       reply_markup: {
-        inline_keyboard: [[
-          {
-            text: "✅ درست",
-            callback_data: `correct_${idx}_${score}`
-          },
-          {
-            text: "❌ غلط",
-            callback_data: `wrong_${idx}_${score}`
-          }
-        ]]
+        inline_keyboard: [
+          q.options.map((opt, i) => ({
+            text: opt,
+            callback_data: (i === q.correct) ? `correct_${index}_${score}` : `wrong_${index}_${score}`
+          }))
+        ]
       }
-    });
-
-    return;
-  }
-
-
-  // سؤال‌های سخت
-  const hardIdx = idx - easy.length;
-
-  if (hardIdx < hard.length) {
-
-    await sendMessage(token, chatId, {
-      text:
-        `🔴 سؤال سخت\n\n` +
-        `امتیاز: ${score}\n\n` +
-        `${hard[hardIdx]}`,
-
-      reply_markup: {
-        inline_keyboard: [[
-          {
-            text: "✅ درست",
-            callback_data: `correct_${idx}_${score}`
-          },
-          {
-            text: "❌ غلط",
-            callback_data: `wrong_${idx}_${score}`
-          }
-        ]]
-      }
-    });
-
-    return;
-  }
-
-
-  // پایان بازی
-  await sendMessage(token, chatId, {
-    text:
-      `🎉 بازی تمام شد!\n\n` +
-      `🏆 امتیاز نهایی: ${score}`
+    })
   });
 }
 
-
-// ============================
-// ارسال پیام به تلگرام
-// ============================
-
-async function sendMessage(token, chatId, data) {
-
-  const response = await fetch(
-    `https://api.telegram.org/bot${token}/sendMessage`,
-    {
-      method: "POST",
-
-      headers: {
-        "Content-Type": "application/json"
-      },
-
-      body: JSON.stringify({
-        chat_id: chatId,
-        ...data
-      })
-    }
-  );
-
-  const result = await response.json();
-
-  if (!result.ok) {
-    console.error("خطای تلگرام:", result);
-  }
-
-  return result;
+async function sendMessage(chatId, text) {
+  await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text })
+  });
 }
-
-
-// ============================
-// حذف Loading دکمه
-// ============================
-
-async function answerCallback(token, callbackId) {
-
-  await fetch(
-    `https://api.telegram.org/bot${token}/answerCallbackQuery`,
-    {
-      method: "POST",
-
-      headers: {
-        "Content-Type": "application/json"
-      },
-
-      body: JSON.stringify({
-        callback_query_id: callbackId
-      })
-    }
-  );
-      }
