@@ -11,6 +11,7 @@ export default {
     const update = await request.json();
     const BOT_TOKEN = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0";
 
+    // ۱. شروع
     if (update.message?.text === "/start") {
       await sendQuestion(BOT_TOKEN, update.message.chat.id, 0, 0);
     }
@@ -25,6 +26,7 @@ export default {
         body: JSON.stringify({ callback_query_id: query.id })
       });
 
+      // ۲. مدیریت غلط
       if (data === "wrong") {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
           method: "POST",
@@ -34,15 +36,17 @@ export default {
         return new Response("OK");
       }
 
-      const [_, nextIndex, score] = data.split("_");
-      const idx = parseInt(nextIndex);
-      const currentScore = parseInt(score);
+      // ۳. پایان (اگر دکمه finish بود)
+      if (data.startsWith("finish_")) {
+        const score = data.split("_")[1];
+        await sendMessage(BOT_TOKEN, query.message.chat.id, `🎉 تبریک! تست تمام شد.\nامتیاز نهایی: ${score} از ${questions.length}`);
+        return new Response("OK");
+      }
 
-      // اگر idx برابر با طول سوالات باشه، یعنی تست تموم شده
-      if (idx >= questions.length) {
-        await sendMessage(BOT_TOKEN, query.message.chat.id, `🎉 تبریک! تست تمام شد.\nامتیاز نهایی: ${currentScore} از ${questions.length}`);
-      } else {
-        await sendQuestion(BOT_TOKEN, query.message.chat.id, idx, currentScore);
+      // ۴. رفتن به سوال بعدی
+      if (data.startsWith("next_")) {
+        const [_, nextIndex, score] = data.split("_");
+        await sendQuestion(BOT_TOKEN, query.message.chat.id, parseInt(nextIndex), parseInt(score));
       }
     }
     return new Response("OK");
@@ -51,14 +55,18 @@ export default {
 
 async function sendQuestion(token, chatId, index, currentScore) {
   const q = questions[index];
+  const isLast = (index === questions.length - 1); // آیا سوال آخره؟
+  
   const buttons = q.options.map((opt, i) => {
     const isCorrect = (i === q.correct);
-    // دکمه بعدی همیشه شماره سوال بعدی رو میده (index + 1)
-    return [{ 
-      text: opt, 
-      callback_data: isCorrect ? `next_${index + 1}_${currentScore + 1}` : "wrong" 
-    }];
+    // اگر سوال آخره، دکمه درست می‌ره به "finish"، وگرنه می‌ره به "next"
+    const nextData = isCorrect 
+        ? (isLast ? `finish_${currentScore + 1}` : `next_${index + 1}_${currentScore + 1}`) 
+        : "wrong";
+        
+    return [{ text: opt, callback_data: nextData }];
   });
+  
   await sendMessage(token, chatId, q.text, { inline_keyboard: buttons });
 }
 
