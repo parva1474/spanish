@@ -1,8 +1,11 @@
-const questions = [
-  { text: "۱. 'سلام' به اسپانیایی چی میشه؟", options: ["Hola", "Adiós"], correct: 0 },
-  { text: "۲. 'صبح بخیر' به اسپانیایی چی میشه؟", options: ["Buenas noches", "Buenos días"], correct: 1 },
-  { text: "۳. معنی '¿Cómo estás?' چیه؟", options: ["چطوری؟", "خداحافظ"], correct: 0 },
-  { text: "۴. چطور می‌گوییم 'اسم من... است'؟", options: ["Me llamo...", "Tengo..."], correct: 0 }
+const easyQuestions = [
+  { text: "سلام به اسپانیایی؟", options: ["Hola", "Adiós"], correct: 0 },
+  { text: "عدد ۵ به اسپانیایی؟", options: ["Cinco", "Tres"], correct: 0 }
+];
+
+const hardQuestions = [
+  { text: "فعل 'بودن' برای 'ما'؟", options: ["Somos", "Sois"], correct: 0 },
+  { text: "معنی 'Ir'؟", options: ["رفتن", "خوردن"], correct: 0 }
 ];
 
 export default {
@@ -11,69 +14,61 @@ export default {
     const update = await request.json();
     const BOT_TOKEN = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0";
 
-    // ۱. شروع
     if (update.message?.text === "/start") {
-      await sendQuestion(BOT_TOKEN, update.message.chat.id, 0, 0);
+      await sendQuestion(BOT_TOKEN, update.message.chat.id, 0, 0, "easy");
     }
 
     if (update.callback_query) {
-      const query = update.callback_query;
-      const data = query.data;
+      const q = update.callback_query;
+      const [type, index, score] = q.data.split("_");
+      const s = parseInt(score);
+      const i = parseInt(index);
 
-      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ callback_query_id: query.id })
-      });
+      // تشخیص سطح فعلی
+      let currentList = (s >= 10) ? hardQuestions : easyQuestions;
 
-      // ۲. مدیریت غلط
-      if (data === "wrong") {
-        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
+      if (type === "ans") {
+        const isCorrect = (q.message.reply_markup.inline_keyboard[i][0].callback_data.includes("correct"));
+        const newScore = isCorrect ? s + 1 : s;
+        const nextIndex = i + 1;
+        
+        // ویرایش پیام (برای امتیاز لحظه‌ای)
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ callback_query_id: query.id, text: "❌ اشتباه بود!", show_alert: true })
+          body: JSON.stringify({
+            chat_id: q.message.chat.id,
+            message_id: q.message.message_id,
+            text: `امتیاز شما: ${newScore}\n\n${(newScore >= 10 ? "سطح سخت: " : "سطح آسان: ") + (currentList[nextIndex]?.text || "پایان")}`,
+            reply_markup: await getMarkup(nextIndex, newScore, currentList)
+          })
         });
-        return new Response("OK");
-      }
-
-      // ۳. پایان (اگر دکمه finish بود)
-      if (data.startsWith("finish_")) {
-        const score = data.split("_")[1];
-        await sendMessage(BOT_TOKEN, query.message.chat.id, `🎉 تبریک! تست تمام شد.\nامتیاز نهایی: ${score} از ${questions.length}`);
-        return new Response("OK");
-      }
-
-      // ۴. رفتن به سوال بعدی
-      if (data.startsWith("next_")) {
-        const [_, nextIndex, score] = data.split("_");
-        await sendQuestion(BOT_TOKEN, query.message.chat.id, parseInt(nextIndex), parseInt(score));
       }
     }
     return new Response("OK");
   }
 };
 
-async function sendQuestion(token, chatId, index, currentScore) {
-  const q = questions[index];
-  const isLast = (index === questions.length - 1); // آیا سوال آخره؟
-  
-  const buttons = q.options.map((opt, i) => {
-    const isCorrect = (i === q.correct);
-    // اگر سوال آخره، دکمه درست می‌ره به "finish"، وگرنه می‌ره به "next"
-    const nextData = isCorrect 
-        ? (isLast ? `finish_${currentScore + 1}` : `next_${index + 1}_${currentScore + 1}`) 
-        : "wrong";
-        
-    return [{ text: opt, callback_data: nextData }];
-  });
-  
-  await sendMessage(token, chatId, q.text, { inline_keyboard: buttons });
+async function getMarkup(index, score, list) {
+  if (index >= list.length) return null;
+  const q = list[index];
+  return {
+    inline_keyboard: q.options.map((opt, i) => [{
+      text: opt,
+      callback_data: `ans_${index}_${score}_${i === q.correct ? "correct" : "wrong"}`
+    }])
+  };
 }
 
-async function sendMessage(token, chatId, text, reply_markup = null) {
+async function sendQuestion(token, chatId, index, score, level) {
+  const list = (level === "hard") ? hardQuestions : easyQuestions;
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, reply_markup })
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: `امتیاز: ${score}\n\n${list[index].text}`,
+      reply_markup: await getMarkup(index, score, list)
+    })
   });
 }
