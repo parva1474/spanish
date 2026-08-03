@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2026-08-02"
 
 [vars]
-spanishtoken = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0"
+Spanishtoken = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0"
 
 [[d1_databases]]
 binding = "DB"
