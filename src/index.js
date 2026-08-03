@@ -8,7 +8,10 @@ export default {
     try {
       const update = await request.json();
       const token = env.Spanishtoken;
-
+      
+console.log("env =", env);
+console.log("keys =", Object.keys(env || {}));
+      
       if (!token) {
         throw new Error("توکن تلگرام در env پیدا نشد. کلیدها این‌ها هستند: " + Object.keys(env));
       }
