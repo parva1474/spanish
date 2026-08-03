@@ -2,8 +2,12 @@ name = "spanish"
 main = "src/index.js"
 compatibility_date = "2026-08-02"
 
+# حتماً شناسه حساب خود را در اینجا قرار دهید
+account_id = "YOUR_ACCOUNT_ID_HERE" 
+
 [vars]
-Spanishtoken = "8839168525:AAFKVI5cFYTiOLuhIMUQtEzBhDG5n24ykU0"
+# Spanishtoken را از اینجا پاک کنید و با دستور زیر ست کنید:
+# wrangler secret put Spanishtoken
 
 [[d1_databases]]
 binding = "DB"
