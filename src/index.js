@@ -31,10 +31,8 @@ async function handleStart(token, chatId) {
 async function handleCallback(token, q) {
   const data = q.data;
   if (data === "start_lessons") {
-    // نمایش درس اول
     await sendLesson(token, q.message.chat.id, 0);
   } else if (data === "placement_test") {
-    // شروع سوال تعیین سطح
     await telegramFetch(token, "sendMessage", {
       chat_id: q.message.chat.id,
       text: "سوال تعیین سطح: کلمه 'Gracias' به چه معناست؟",
@@ -53,13 +51,13 @@ async function sendLesson(token, chatId, id) {
   const lesson = lessons[id];
   await telegramFetch(token, "sendMessage", {
     chat_id: chatId,
-    text: `📖 درس: ${lesson.text}`
+    text: `📖 درس: ${lesson.text}`,
     reply_markup: { inline_keyboard: [[{ text: "👁 معنی", callback_data: "show_m" }]] }
   });
 }
 
 async function telegramFetch(token, method, body) {
-  const res = await fetch(https://api.telegram.org/bot${token}/${method}, {
+  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
