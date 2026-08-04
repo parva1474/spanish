@@ -82,7 +82,7 @@ const lessons = [
   },
   { 
     id: 9, 
-    text: "Me llamo Ali. ¿Y tú?", 
+    text: "Me llamo Ali. چه خبر؟ (¿Y tú?)", 
     meaning: "اسم من علی است. و تو؟", 
     phonetic: "مِ یامو علی. ای تو؟",
     question: "برای پرسیدن نام طرف مقابل از کدام عبارت استفاده شده است؟", 
@@ -100,6 +100,7 @@ export default {
     try {
       const update = await request.json();
       const token = env.Spanishtoken;
+      const db = env.DB; // اتصال به دیتابیس D1
       
       if (!token) {
         console.error("Token is missing in environment variables!");
@@ -111,7 +112,7 @@ export default {
         const text = update.message.text.trim();
         
         if (text.startsWith("/start")) {
-          await handleStart(token, chatId);
+          await handleStart(token, chatId, db);
         } else {
           await telegramFetch(token, "sendMessage", {
             chat_id: chatId,
@@ -119,7 +120,7 @@ export default {
           });
         }
       } else if (update.callback_query) {
-        await handleCallback(token, update.callback_query);
+        await handleCallback(token, update.callback_query, db);
       }
       
     } catch (err) {
@@ -130,20 +131,45 @@ export default {
   }
 };
 
-async function handleStart(token, chatId) {
+async function handleStart(token, chatId, db) {
+  // بررسی آخرین درس کاربر در دیتابیس
+  let lastLesson = 0;
+  try {
+    const { results } = await db.prepare("SELECT last_lesson FROM users WHERE chat_id = ?").bind(chatId).all();
+    if (results && results.length > 0) {
+      lastLesson = results[0].last_lesson;
+    }
+  } catch (e) {
+    console.error("DB Read Error:", e);
+  }
+
+  let keyboard = [];
+  let welcomeText = "سلام! به ربات آموزش اسپانیایی خوش آمدید.";
+
+  if (lastLesson > 0) {
+    welcomeText += `\n\nشما آخرین بار در **درس ${lastLesson + 1}** بودید. مایلید از کجا ادامه دهید؟`;
+    keyboard = [
+      [{ text: `▶️ ادامه از آخرین درس (درس ${lastLesson + 1})`, callback_data: `lesson_${lastLesson}` }],
+      [{ text: "🔄 شروع از درس اول (درس ۱)", callback_data: "lesson_0" }],
+      [{ text: "📊 تعیین سطح", callback_data: "placement_test" }]
+    ];
+  } else {
+    welcomeText += "\n\nبرای شروع یادگیری روی درس اول بزنید:";
+    keyboard = [
+      [{ text: "📖 شروع درس‌ها (درس ۱)", callback_data: "lesson_0" }],
+      [{ text: "📊 تعیین سطح", callback_data: "placement_test" }]
+    ];
+  }
+
   await telegramFetch(token, "sendMessage", {
     chat_id: chatId,
-    text: "سلام! به ربات آموزش اسپانیایی خوش آمدید. برای شروع یادگیری روی درس اول بزنید:",
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "📖 شروع درس‌ها (درس ۱)", callback_data: "lesson_0" }],
-        [{ text: "📊 تعیین سطح", callback_data: "placement_test" }]
-      ]
-    }
+    text: welcomeText,
+    parse_mode: "Markdown",
+    reply_markup: { inline_keyboard: keyboard }
   });
 }
 
-async function handleCallback(token, q) {
+async function handleCallback(token, q, db) {
   const data = q.data;
   const chatId = q.message.chat.id;
   
@@ -152,6 +178,15 @@ async function handleCallback(token, q) {
     const lesson = lessons[lessonId];
     
     if (lesson) {
+      // ذخیره آخرین درس دیده شده در دیتابیس
+      try {
+        await db.prepare(
+          "INSERT INTO users (chat_id, last_lesson) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET last_lesson = ?"
+        ).bind(chatId, lessonId, lessonId).run();
+      } catch (e) {
+        console.error("DB Write Error:", e);
+      }
+
       await telegramFetch(token, "sendMessage", {
         chat_id: chatId,
         text: `📖 درس ${lessonId + 1} از ${lessons.length}:\n\n🇪🇸 ${lesson.text}`,
@@ -238,7 +273,7 @@ async function handleCallback(token, q) {
       reply_markup: { inline_keyboard: [nextButtons] }
     });
   } else if (data === "back_home") {
-    await handleStart(token, chatId);
+    await handleStart(token, chatId, db);
   } else if (data === "placement_test") {
     await telegramFetch(token, "sendMessage", {
       chat_id: chatId,
@@ -268,4 +303,4 @@ async function telegramFetch(token, method, body) {
   } catch (e) {
     console.error("Telegram API Error:", e);
   }
-}
+    }
