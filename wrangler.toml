@@ -5,9 +5,10 @@ compatibility_date = "2026-08-02"
 account_id = "9902af4a69cdffc5a087b2da0a0a5a4d" 
 
 [vars]
-# wrangler secret put Spanishtoken
+Spanishtoken = "8839168525:AAEOBYFuiAFEAEGQh31pOzbCivXP6JeKG8g"
 
-[[d1_databases]]
+[[d1_databases]
+
 binding = "DB"
 database_name = "spanish-bot-db"
 database_id = "Df8d82a0-b568-4641-bce8-334518fd6977"
