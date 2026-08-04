@@ -1,65 +1,276 @@
-// قالب‌ها و کلمات پایه برای ساخت بی‌نهایت درس و جمله پویا
-const subjects = [
-  { es: "Yo", fa: "من" }, { es: "Tú", fa: "تو" }, { es: "Él", fa: "او (مرد)" }, 
-  { es: "Ella", fa: "او (زن)" }, { es: "Nosotros", fa: "ما" }, { es: "Ellos", fa: "آن‌ها" }
+// بانک جملات استاندارد، کاملاً گرامری و معتبر اسپانیایی
+const lessons = [
+  { 
+    id: 0, 
+    text: "Hola, ¿cómo estás? Estoy muy bien, gracias.", 
+    meaning: "سلام، چطور هستی؟ من خیلی خوبم، ممنون.", 
+    phonetic: "اولا، کومو استاس؟ استوی موئی بین، گراسیاس.",
+    question: "معنی کلمه 'Hola' چیست؟", 
+    options: ["سلام", "خداحافظ", "ممنون", "لطفاً"], 
+    correct: 0 
+  },
+  { 
+    id: 1, 
+    text: "¿De dónde eres? Soy de Irán y vivo en Teherán.", 
+    meaning: "اهل کجایی؟ من اهل ایران هستم و در تهران زندگی می‌کنم.", 
+    phonetic: "دِ دونده اِرِس؟ سوی دِ ایران ای بیبو ان تهران.",
+    question: "معنی '¿De dónde eres?' چیست؟", 
+    options: ["حالت چطوره؟", "اسمت چیه؟", "اهل کجایی؟", "کجا زندگی می‌کنی؟"], 
+    correct: 2 
+  },
+  { 
+    id: 2, 
+    text: "Buenos días, ¿qué tal tu día hoy?", 
+    meaning: "صبح بخیر، امروز اوضاع روزگارت چطور است؟", 
+    phonetic: "بوئنوس دیاس، کِ تال تو دیا اوی؟",
+    question: "معنی 'Buenos días' چیست؟", 
+    options: ["شب بخیر", "صبح بخیر", "عصر بخیر", "خداحافظ"], 
+    correct: 1 
+  },
+  { 
+    id: 3, 
+    text: "Muchas gracias por tu ayuda, de nada amigo.", 
+    meaning: "خیلی ممنون برای کمکت، خواهش می‌کنم دوست من.", 
+    phonetic: "موچاس گراسیاس پور تو آیودا، دِ نادا آمیگو.",
+    question: "معنی عبارت 'de nada' چیست؟", 
+    options: ["خواهش می‌کنم", "ممنون", "متأسفم", "خواهش نمی‌کنم"], 
+    correct: 0 
+  },
+  { 
+    id: 4, 
+    text: "Hablo un poco de español, pero estoy aprendiendo rápido.", 
+    meaning: "من کمی اسپانیایی صحبت می‌کنم، اما دارم سریع یاد می‌گیرم.", 
+    phonetic: "آبلو اون پوکو دِ اسپانیول، پرو استوی آپرندیندو راپیدو.",
+    question: "معنی 'un poco' چیست؟", 
+    options: ["زیاد", "روان", "کمی", "اصلاً"], 
+    correct: 2 
+  },
+  { 
+    id: 5, 
+    text: "¿Cuánto cuesta esto? Es demasiado caro para mí.", 
+    meaning: "این چقدر قیمت دارد؟ این برای من خیلی گران است.", 
+    phonetic: "کوانتو کوئستا استو؟ است دِماسیادو کارو پارا می.",
+    question: "برای پرسیدن قیمت یک جنس از چه عبارتی استفاده می‌شود؟", 
+    options: ["¿Dónde está?", "¿Cuánto cuesta esto?", "¿Qué hora es?", "Hola"], 
+    correct: 1 
+  },
+  { 
+    id: 6, 
+    text: "No entiendo, por favor hable más despacio y repita.", 
+    meaning: "متوجه نمی‌شوم، لطفاً آرام‌تر صحبت کنید و تکرار کنید.", 
+    phonetic: "نو انتیِندو، پور فاور آبله ماس دسپاسیو ای رپیتا.",
+    question: "عبارت 'más despacio' یعنی چه؟", 
+    options: ["بلندتر", "آرام‌تر / یواش‌تر", "سریع‌تر", "دوباره"], 
+    correct: 1 
+  },
+  { 
+    id: 7, 
+    text: "Por favor, un café con leche y un poco de agua.", 
+    meaning: "لطفاً یک قهوه با شیر و کمی آب.", 
+    phonetic: "پور فاور، اون کافه کون لچه ای اون پوکو دِ آگوا.",
+    question: "کلمه 'Por favor' به چه معناست؟", 
+    options: ["ممنون", "سلام", "لطفاً", "ببخشید"], 
+    correct: 2 
+  },
+  { 
+    id: 8, 
+    text: "¡Adiós! Hasta luego, que tengas un excelente día.", 
+    meaning: "خداحافظ! تا بعد، روز فوق‌العاده‌ای داشته باشی.", 
+    phonetic: "آدیوس! آستا لوئگو، کِ تنگاس اون اکسلنت دیا.",
+    question: "معنی 'Hasta luego' چیست؟", 
+    options: ["تا بعد / به امید دیدار", "خوش آمدید", "صبح بخیر", "روز خوبی داشته باشید"], 
+    correct: 0 
+  },
+  { 
+    id: 9, 
+    text: "Me llamo Ali. ¿Cómo se llama usted?", 
+    meaning: "اسم من علی است. اسم شما چیست؟ (محترمانه)", 
+    phonetic: "مِ یامو علی. کومو سِ یاما اوستد؟",
+    question: "برای پرسیدن نام شخص به صورت محترمانه از چه عبارتی استفاده می‌شود؟", 
+    options: ["¿Cómo te llamas?", "¿Cómo se llama usted?", "¿De dónde eres?", "Hola"], 
+    correct: 1 
+  },
+  { 
+    id: 10, 
+    text: "¿Dónde está el baño más cercano, por favor?", 
+    meaning: "نزدیک‌ترین دستشویی کجاست، لطفاً؟", 
+    phonetic: "دونده استا ال بانیو ماس سرکانو، پور فاور?",
+    question: "معنی 'el baño' چیست؟", 
+    options: ["فرودگاه", "هتل", "دستشویی", "رستوران"], 
+    correct: 2 
+  },
+  { 
+    id: 11, 
+    text: "Tengo mucha hambre y sed. Quiero comer algo rico.", 
+    meaning: "خیلی گرسنه‌ام و تشنه‌ام. می‌خواهم یک چیز خوشمزه بخورم.", 
+    phonetic: "تنگو موچا امبره ای سد. کییرو کومر آلگو ریکو.",
+    question: "معنی کلمه 'hambre' چیست؟", 
+    options: ["تشنه", "گرسنه", "خسته", "خوشحال"], 
+    correct: 1 
+  },
+  { 
+    id: 12, 
+    text: "¿Qué hora es? Son las tres y media de la tarde.", 
+    meaning: "ساعت چند است؟ ساعت سه و نیم بعد از ظهر است.", 
+    phonetic: "کِ اورا است اس؟ سون لاس ترس ای مدیا دِ لا تارده.",
+    question: "برای پرسیدن ساعت از کدام عبارت استفاده می‌شود؟", 
+    options: ["¿Qué hora es?", "¿Cuánto cuesta?", "¿Dónde estás?", "Buenos días"], 
+    correct: 0 
+  },
+  { 
+    id: 13, 
+    text: "No hablo español muy bien todavía. Necesito práctica diaria.", 
+    meaning: "هنوز اسپانیایی را خیلی خوب صحبت نمی‌کنم. به تمرین روزانه نیاز دارم.", 
+    phonetic: "نو آبلو اسپانیول موئی بین تودافیا. نسیسیتو پراکتیکا دیاریا.",
+    question: "معنی کلمه 'Necesito' چیست؟", 
+    options: ["می‌دانم", "نیاز دارم", "نمی‌خواهم", "دوست دارم"], 
+    correct: 1 
+  },
+  { 
+    id: 14, 
+    text: "Me gusta viajar por el mundo y conocer nuevas culturas.", 
+    meaning: "سفر کردن در دنیا و شناخت فرهنگ‌های جدید را دوست دارم.", 
+    phonetic: "مِ گوستا بیاخار پور ال موندو ای کونوسر نوئباس کولتوراس.",
+    question: "فعل 'viajar' به چه معناست؟", 
+    options: ["خوردن", "کار کردن", "سفر کردن", "خوابیدن"], 
+    correct: 2 
+  },
+  { 
+    id: 15, 
+    text: "Disculpe, ¿dónde puedo comprar un billete de tren?", 
+    meaning: "ببخشید، کجا می‌توانم یک بلیط قطار بخرم؟", 
+    phonetic: "دیسکولپه، دونده پدو کومپر اون بیه‌ته دِ ترن؟",
+    question: "معنی 'billete' چیست؟", 
+    options: ["کفش", "بلیط", "کیف", "صندلی"], 
+    correct: 1 
+  },
+  { 
+    id: 16, 
+    text: "El tiempo hoy está muy bien, hace sol y no llueve.", 
+    meaning: "هوای امروز خیلی خوب است، آفتابی است و باران نمی‌بارد.", 
+    phonetic: "ال تیمپو اوی است موئی بین، آسِه سول ای نو یوئبه.",
+    question: "کلمه 'sol' یعنی چه؟", 
+    options: ["باران", "برف", "آفتاب / خورشید", "باد"], 
+    correct: 2 
+  },
+  { 
+    id: 17, 
+    text: "Mañana voy a visitar a un viejo amigo en la ciudad.", 
+    meaning: "فردا قرار است به دیدن یک دوست قدیمی در شهر بروم.", 
+    phonetic: "مانیانا بوی آ بیسیتار آ اون بیه‌خو آمیگو ان لا سیوداد.",
+    question: "معنی 'mañana' چیست؟", 
+    options: ["دیروز", "امروز", "فردا / صبح", "هفته پیش"], 
+    correct: 2 
+  },
+  { 
+    id: 18, 
+    text: "¿Puede ayudarme, por favor? He perdido mi pasaporte.", 
+    meaning: "می‌توانید کمکم کنید، لطفاً؟ پاسپورتم را گم کرده‌ام.", 
+    phonetic: "پویده آیودارمه، پور فاور؟ اِ پردیدو می پاساپورته.",
+    question: "معنی 'pasaporte' چیست؟", 
+    options: ["چمدان", "پاسپورت / گذرنامه", "بلیط", "نقشه"], 
+    correct: 1 
+  },
+  { 
+    id: 19, 
+    text: "Me gustaría reservar una habitación doble para dos noches.", 
+    meaning: "دوست دارم یک اتاق دو تخته برای دو شب رزرو کنم.", 
+    phonetic: "مِ گوستاریا رسربار اونا ابیتاسیون دوبله پارا دوس نوچس.",
+    question: "فعل 'reservar' یعنی چه؟", 
+    options: ["رزرو کردن", "فروختن", "شکستن", "پیدا کردن"], 
+    correct: 0 
+  },
+  { 
+    id: 20, 
+    text: "Los números en español: uno, dos, tres, cuatro, cinco.", 
+    meaning: "اعداد به زبان اسپانیایی: یک، دو، سه، چهار، پنج.", 
+    phonetic: "لوس نومروس ان اسپانیول: اونو، دوس، ترس، کواترو، سینکو.",
+    question: "عدد 'tres' یعنی چند؟", 
+    options: ["یک", "دو", "سه", "چهار"], 
+    correct: 2 
+  },
+  { 
+    id: 21, 
+    text: "Continuamos con los números: seis, siete, ocho, nueve, diez.", 
+    meaning: "ادامه با اعداد: شش، هفت، هشت، نه، ده.", 
+    phonetic: "کونتینواموس کون لوس نومروس: سیس، سیه‌ته، اوچو، نوئبه، دیه‌س.",
+    question: "عدد 'diez' یعنی چند؟", 
+    options: ["پنج", "هفت", "ده", "نه"], 
+    correct: 2 
+  },
+  { 
+    id: 22, 
+    text: "¿Cuál es tu color favorito? Mi color favorito es el azul.", 
+    meaning: "رنگ مورد علاقه تو چیست؟ رنگ مورد علاقه من آبی است.", 
+    phonetic: "کوال است تو کولور فاوریتو؟ می کولور فاوریتو است ال آزول.",
+    question: "رنگ 'azul' چه رنگی است؟", 
+    options: ["قرمز", "سبز", "آبی", "زرد"], 
+    correct: 2 
+  },
+  { 
+    id: 23, 
+    text: "Tengo un hermano y dos hermanas menores.", 
+    meaning: "من یک برادر و دو خواهر کوچکتر دارم.", 
+    phonetic: "تنگو اون ِرمانو ای دوس ِرماناس منورس.",
+    question: "کلمه 'hermano' یعنی چه؟", 
+    options: ["خواهر", "برادر", "پدر", "مادر"], 
+    correct: 1 
+  },
+  { 
+    id: 24, 
+    text: "Me encanta la comida española, especialmente la paella.", 
+    meaning: "من عاشق غذای اسپانیایی هستم، به‌خصوص پائیا.", 
+    phonetic: "مِ انکانتا لا کومیدا اسپانیولا، اسپسیالمنته لا پاییا.",
+    question: "معنی 'comida' چیست؟", 
+    options: ["نوشیدنی", "غذا", "میوه", "شیرینی"], 
+    correct: 1 
+  },
+  { 
+    id: 25, 
+    text: "¿Dónde está la estación de metro más cercana?", 
+    meaning: "ایستگاه متروی نزدیک کجاست؟", 
+    phonetic: "دونده استا لا استاسیون دِ مترو ماس سرکانا؟",
+    question: "معنی 'estación de metro' چیست؟", 
+    options: ["فرودگاه", "ایستگاه مترو", "هتل", "بیمارستان"], 
+    correct: 1 
+  },
+  { 
+    id: 26, 
+    text: "Estoy buscando una farmacia para comprar medicina.", 
+    meaning: "من به دنبال یک داروخانه برای خرید دارو هستم.", 
+    phonetic: "استوی بوسکاندو اونا فارماسیا پارا کومپر مدسینا.",
+    question: "معنی 'farmacia' چیست؟", 
+    options: ["داروخانه", "سوپرمارکت", "رستوران", "کتابفروشی"], 
+    correct: 0 
+  },
+  { 
+    id: 27, 
+    text: "El agua está muy fría, pero el clima es agradable.", 
+    meaning: "آب خیلی سرد است، اما آب و هوا دلپذیر است.", 
+    phonetic: "ال آگوا است موئی فرییا، پرو ال کلیما است آگرادابل.",
+    question: "کلمه 'fría' به چه معناست؟", 
+    options: ["گرم", "سرد", "شیرین", "تلخ"], 
+    correct: 1 
+  },
+  { 
+    id: 28, 
+    text: "Muchas gracias por todo. ¡Eres muy amable!", 
+    meaning: "برای همه چیز خیلی ممنون. تو بسیار مهربان هستی!", 
+    phonetic: "موچاس گراسیاس پور تودو. اِرِس موئی آمابه!",
+    question: "معنی کلمه 'amable' چیست؟", 
+    options: ["عصبانی", "مهربان / خوش‌برخورد", "غمگین", "تنبل"], 
+    correct: 1 
+  },
+  { 
+    id: 29, 
+    text: "¡Felicitaciones! Has completado las lecciones básicas de español.", 
+    meaning: "تبریک می‌گویم! شما درس‌های پایه اسپانیایی را به اتمام رساندید.", 
+    phonetic: "فلیچیدادس! آس کومپلتادو لاس لسیونس باسیکاس دِ اسپانیول.",
+    question: "معنی کلمه 'Felicitaciones' چیست؟", 
+    options: ["تسلیت", "تبریک", "خداحافظی", "خوش آمدید"], 
+    correct: 1 
+  }
 ];
-
-const verbs = [
-  { es: "quiero", fa: "می‌خواهم", inf: "querer" },
-  { es: "necesito", fa: "نیاز دارم", inf: "necesitar" },
-  { es: "puedo", fa: "می‌توانم", inf: "poder" },
-  { es: "tengo", fa: "دارم", inf: "tener" },
-  { es: "voy a", fa: "می‌روم که / قصد دارم", inf: "ir" },
-  { es: "me gusta", fa: "دوست دارم", inf: "gustar" },
-  { es: "aprendo", fa: "یاد می‌گیرم", inf: "aprender" },
-  { es: "busco", fa: "دنبال می‌گردم", inf: "buscar" }
-];
-
-const objects = [
-  { es: "un café con leche", fa: "یک قهوه با شیر" },
-  { es: "una habitación doble", fa: "یک اتاق دو تخته" },
-  { es: "un billete de tren", fa: "یک بلیط قطار" },
-  { es: "el baño más cercano", fa: "نزدیک‌ترین دستشویی" },
-  { es: "ayuda por favor", fa: "کمک لطفاً" },
-  { es: "agua fría", fa: "آب سرد" },
-  { es: "un poco de práctica", fa: "کمی تمرین" },
-  { es: "nueva información", fa: "اطلاعات جدید" },
-  { es: "un buen libro", fa: "یک کتاب خوب" },
-  { es: "comida española", fa: "غذای اسپانیایی" }
-];
-
-const placesOrTimes = [
-  { es: "en la ciudad", fa: "در شهر" },
-  { es: "mañana por la mañana", fa: "فردا صبح" },
-  { es: "hoy por la tarde", fa: "امروز بعد از ظهر" },
-  { es: "en el hotel", fa: "در هتل" },
-  { es: "por favor", fa: "لطفاً" },
-  { es: "rápidamente", fa: "به سرعت" },
-  { es: "con mis amigos", fa: "با دوستانم" }
-];
-
-// تابع تولید درس بی‌نهایت و پویا بر اساس ID یا هش
-function getInfiniteLesson(id) {
-  // استفاده از آی‌دی برای انتخاب پایدارِ کلمات به صورت چرخشی و تصادفیِ منظم
-  const sub = subjects[id % subjects.length];
-  const verb = verbs[(id * 3) % verbs.length];
-  const obj = objects[(id * 7) % objects.length];
-  const extra = placesOrTimes[(id * 11) % placesOrTimes.length];
-
-  const spanishText = `${sub.es} ${verb.es} ${obj.es} ${extra.es}.`;
-  const persianMeaning = `${sub.fa} ${obj.fa} را ${verb.fa} ${extra.fa}.`;
-  
-  // تولید سوال چهار گزینه‌ای هوشمند بر اساس خودِ جمله
-  return {
-    id: id,
-    text: spanishText,
-    meaning: persianMeaning,
-    phonetic: `تلفظ پویا برای درس شماره ${id + 1}`,
-    question: `معنی فعل '${verb.es}' در این جمله چیست؟`,
-    options: [verb.fa, "نمی‌دانم", "فردا", "هرگز"],
-    correct: 0
-  };
-}
 
 export default {
   async fetch(request, env, ctx) {
@@ -113,20 +324,18 @@ async function handleStart(token, chatId, db) {
   }
 
   let keyboard = [];
-  let welcomeText = "سلام! به ربات آموزش اسپانیایی با **بانک درس‌های بی‌نهایت و پویا** خوش آمدید. ♾️ اسپانیایی را بدون محدودیت یاد بگیرید!";
+  let welcomeText = "سلام! به ربات آموزش اسپانیایی خوش آمدید. تمامی جملات دارای ساختار کاملاً درست، اصولی و استاندارد هستند.";
 
   if (lastLesson > 0) {
-    welcomeText += `\n\nشما آخرین بار در **درس ${lastLesson + 1}** بودید. مایلید از کجا ادامه دهید؟`;
+    welcomeText += `\n\nشما آخرین بار در **درس ${lastLesson + 1}** از مجموع ${lessons.length} درس بودید. مایلید از کجا ادامه دهید؟`;
     keyboard = [
       [{ text: `▶️ ادامه از درس ${lastLesson + 1}`, callback_data: `lesson_${lastLesson}` }],
-      [{ text: "🔄 شروع از درس اول (درس ۱)", callback_data: "lesson_0" }],
-      [{ text: "🎲 درس تصادفیِ جدید", callback_data: `lesson_${Math.floor(Math.random() * 10000)}` }]
+      [{ text: "🔄 شروع از درس اول (درس ۱)", callback_data: "lesson_0" }]
     ];
   } else {
     welcomeText += `\n\nبرای شروع یادگیری روی دکمه زیر بزنید:`;
     keyboard = [
-      [{ text: "📖 شروع درس اول", callback_data: "lesson_0" }],
-      [{ text: "🎲 درس تصادفیِ جدید", callback_data: `lesson_${Math.floor(Math.random() * 10000)}` }]
+      [{ text: "📖 شروع درس اول (درس ۱)", callback_data: "lesson_0" }]
     ];
   }
 
@@ -144,33 +353,35 @@ async function handleCallback(token, q, db) {
   
   if (data.startsWith("lesson_")) {
     const lessonId = parseInt(data.split("_")[1]);
-    const lesson = getInfiniteLesson(lessonId);
+    const lesson = lessons[lessonId];
     
-    try {
-      await db.prepare(
-        "INSERT INTO users (chat_id, last_lesson) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET last_lesson = ?"
-      ).bind(chatId, lessonId, lessonId).run();
-    } catch (e) {
-      console.error("DB Write Error:", e);
-    }
-
-    await telegramFetch(token, "sendMessage", {
-      chat_id: chatId,
-      text: `📖 درس شماره ${lessonId + 1} (پویا و بی‌نهایت):\n\n🇪🇸 ${lesson.text}`,
-      reply_markup: { 
-        inline_keyboard: [
-          [
-            { text: "🗣 تلفظ صوتی", callback_data: `audio_${lessonId}` },
-            { text: "👁 نمایش معنی", callback_data: `meaning_${lessonId}` }
-          ],
-          [{ text: "✍️ امتحان این درس", callback_data: `quiz_${lessonId}` }],
-          [{ text: "➡️ درس بعدی (شماره‌ی بعد)", callback_data: `lesson_${lessonId + 1}` }]
-        ]
+    if (lesson) {
+      try {
+        await db.prepare(
+          "INSERT INTO users (chat_id, last_lesson) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET last_lesson = ?"
+        ).bind(chatId, lessonId, lessonId).run();
+      } catch (e) {
+        console.error("DB Write Error:", e);
       }
-    });
+
+      await telegramFetch(token, "sendMessage", {
+        chat_id: chatId,
+        text: `📖 درس ${lessonId + 1} از ${lessons.length}:\n\n🇪🇸 ${lesson.text}`,
+        reply_markup: { 
+          inline_keyboard: [
+            [
+              { text: "🗣 تلفظ صوتی", callback_data: `audio_${lessonId}` },
+              { text: "🔤 تلفظ نوشتاری", callback_data: `phonetic_${lessonId}` }
+            ],
+            [{ text: "👁 نمایش معنی", callback_data: `meaning_${lessonId}` }],
+            [{ text: "✍️ امتحان این درس", callback_data: `quiz_${lessonId}` }]
+          ]
+        }
+      });
+    }
   } else if (data.startsWith("audio_")) {
     const lessonId = parseInt(data.split("_")[1]);
-    const lesson = getInfiniteLesson(lessonId);
+    const lesson = lessons[lessonId];
     
     const cleanText = encodeURIComponent(lesson.text);
     const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=es&client=tw-ob`;
@@ -179,19 +390,24 @@ async function handleCallback(token, q, db) {
       chat_id: chatId,
       audio: audioUrl,
       title: `تلفظ درس ${lessonId + 1}`,
-      performer: "Infinite Spanish Bot"
+      performer: "Spanish Bot"
     });
 
-  } else if (data.startsWith("meaning_")) {
+  } else if (data.startsWith("phonetic_")) {
     const lessonId = parseInt(data.split("_")[1]);
-    const lesson = getInfiniteLesson(lessonId);
     await telegramFetch(token, "sendMessage", {
       chat_id: chatId,
-      text: `🇮🇷 معنی: ${lesson.meaning}`
+      text: `🔤 تلفظ نوشتاری:\n${lessons[lessonId].phonetic}`
+    });
+  } else if (data.startsWith("meaning_")) {
+    const lessonId = parseInt(data.split("_")[1]);
+    await telegramFetch(token, "sendMessage", {
+      chat_id: chatId,
+      text: `🇮🇷 معنی: ${lessons[lessonId].meaning}`
     });
   } else if (data.startsWith("quiz_")) {
     const lessonId = parseInt(data.split("_")[1]);
-    const lesson = getInfiniteLesson(lessonId);
+    const lesson = lessons[lessonId];
     
     const keyboard = [];
     for (let i = 0; i < lesson.options.length; i += 2) {
@@ -212,7 +428,7 @@ async function handleCallback(token, q, db) {
     const parts = data.split("_");
     const lessonId = parseInt(parts[1]);
     const selectedOption = parseInt(parts[2]);
-    const lesson = getInfiniteLesson(lessonId);
+    const lesson = lessons[lessonId];
     
     let resultText = "";
     if (selectedOption === lesson.correct) {
@@ -221,21 +437,23 @@ async function handleCallback(token, q, db) {
       resultText = `❌ اشتباه بود.\nپاسخ درست: ${lesson.options[lesson.correct]}`;
     }
 
+    const nextButtons = [];
+    if (lessonId + 1 < lessons.length) {
+      nextButtons.push({ text: "➡️ درس بعدی", callback_data: `lesson_${lessonId + 1}` });
+    } else {
+      nextButtons.push({ text: "🎉 پایان درس‌ها (بازگشت به شروع)", callback_data: "back_home" });
+    }
+
     await telegramFetch(token, "sendMessage", {
       chat_id: chatId,
       text: resultText,
-      reply_markup: { 
-        inline_keyboard: [
-          [{ text: "➡️ رفتن به درس بعدی", callback_data: `lesson_${lessonId + 1}` }],
-          [{ text: "🎲 درس رندوم جدید", callback_data: `lesson_${Math.floor(Math.random() * 10000)}` }]
-        ] 
-      }
+      reply_markup: { inline_keyboard: [nextButtons] }
     });
   } else if (data === "back_home") {
     await handleStart(token, chatId, db);
   }
   
-  await telegramFetch(token, "answerCallbackQuery", { callback_query_id: q.id });
+  + await telegramFetch(token, "answerCallbackQuery", { callback_query_id: q.id });
 }
 
 async function telegramFetch(token, method, body) {
@@ -249,4 +467,4 @@ async function telegramFetch(token, method, body) {
   } catch (e) {
     console.error("Telegram API Error:", e);
   }
-}
+              }
