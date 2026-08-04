@@ -53,7 +53,7 @@ async function sendLesson(token, chatId, id) {
   const lesson = lessons[id];
   await telegramFetch(token, "sendMessage", {
     chat_id: chatId,
-    text: 📖 درس: ${lesson.text},
+    text: `📖 درس: ${lesson.text}`
     reply_markup: { inline_keyboard: [[{ text: "👁 معنی", callback_data: "show_m" }]] }
   });
 }
