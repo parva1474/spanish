@@ -82,7 +82,7 @@ const lessons = [
   },
   { 
     id: 9, 
-    text: "Me llamo Ali. چه خبر؟ (¿Y tú?)", 
+    text: "Me llamo Ali. ¿Y tú?", 
     meaning: "اسم من علی است. و تو؟", 
     phonetic: "مِ یامو علی. ای تو؟",
     question: "برای پرسیدن نام طرف مقابل از کدام عبارت استفاده شده است؟", 
@@ -100,7 +100,7 @@ export default {
     try {
       const update = await request.json();
       const token = env.Spanishtoken;
-      const db = env.DB; // اتصال به دیتابیس D1
+      const db = env.DB;
       
       if (!token) {
         console.error("Token is missing in environment variables!");
@@ -132,7 +132,6 @@ export default {
 };
 
 async function handleStart(token, chatId, db) {
-  // بررسی آخرین درس کاربر در دیتابیس
   let lastLesson = 0;
   try {
     const { results } = await db.prepare("SELECT last_lesson FROM users WHERE chat_id = ?").bind(chatId).all();
@@ -178,7 +177,6 @@ async function handleCallback(token, q, db) {
     const lesson = lessons[lessonId];
     
     if (lesson) {
-      // ذخیره آخرین درس دیده شده در دیتابیس
       try {
         await db.prepare(
           "INSERT INTO users (chat_id, last_lesson) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET last_lesson = ?"
@@ -303,4 +301,4 @@ async function telegramFetch(token, method, body) {
   } catch (e) {
     console.error("Telegram API Error:", e);
   }
-    }
+                     }
