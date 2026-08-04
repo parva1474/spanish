@@ -158,11 +158,29 @@ async function handleCallback(token, q) {
       });
     }
   } else if (data.startsWith("audio_")) {
-    // پردازش تلفظ صوتی (خانم یا آقا)
     const parts = data.split("_");
     const gender = parts[1]; // f یا m
     const lessonId = parseInt(parts[2]);
     const lesson = lessons[lessonId];
+    
+    const cleanText = encodeURIComponent(lesson.text);
+    
+    // استفاده از دو سرویس مختلف برای صدای زن و مرد
+    // صدای خانم: سرویس باکیفیت گوگل با لهجه اسپانیایی
+    // صدای آقا: سرویس استاندارد و بم‌تر (StreamElements TTS با صدای Pablo یا Mads)
+    let audioUrl = "";
+    if (gender === 'f') {
+      audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=es&client=tw-ob`;
+    } else {
+      audioUrl = `https://api.streamelements.com/kappa/v2/speech?voice=Enrique&text=${cleanText}`;
+    }
+
+    await telegramFetch(token, "sendAudio", {
+      chat_id: chatId,
+      audio: audioUrl,
+      title: `تلفظ درس ${lessonId + 1} (${gender === 'f' ? 'خانم' : 'آقا'})`,
+      performer: "Spanish Bot"
+    });
 
     // پاکسازی متن برای ارسال به سرویس صوت (حذف علامت‌های سوال و تعجب اضافی)
     const cleanText = encodeURIComponent(lesson.text);
