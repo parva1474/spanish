@@ -1,3 +1,6 @@
+const CHANNEL_1 = "@newchannell"; // 
+const CHANNEL_2 = "@parvapoen";//
+
 // دیتابیس دروس با ساختار کاملاً تفکیک‌شده و تلفظ‌های نوشتاریِ زیرهم
 const lessons = [
   {
