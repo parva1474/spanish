@@ -1,34 +1,31 @@
 // src/lessons.js
 import { lesson0 } from './lessons/lesson0.js';
 import { lesson1 } from './lessons/lesson1.js';
-
-// ساخت آرایه پایه شامل درس‌های موجود
-const allLessons = [lesson0, lesson1];
-
-// بارگذاری خودکار و پویا برای درس‌های ۲ تا ۶۰ (در صورت وجود فایل)
-// کدهای زیر به صورت هوشمند درس‌ها را از فایل‌های مربوطه بارگذاری می‌کنند
-for (let i = 2; i <= 60; i++) {
-  try {
-    // از آنجا که در Cloudflare ایمپورت‌های پویا مسیر نسبی می‌خواهند، 
-    // روش زیر به شما اجازه می‌دهد بدون دستکاری این فایل، با ساخت فایل در پوشه آن‌ها را بارگذاری کنید
-    // (توجه: در پلتفرم‌های ابری پشتبانی از dynamic import نیازمند ساختار زیر است)
-  } catch (e) {}
-}
-
-// روش جایگزین بسیار ساده و مطمئن (بدون نیاز به ویرایش مجدد):
-// شما می‌توانید یک پترن آرایه‌ای داشته باشید که اگر نام فایل را بسازید خوانده شود،
-// اما رایج‌ترین روش استاندارد در Workerها این است که مابقی درس‌ها را به شکل زیر به صورت بازه وارد کنید:
-
 import { lesson2 } from './lessons/lesson2.js';
-// هر زمان فایل درس جدیدی مثل lesson3.js ساختید، فقط خط زیر را از حالت کامنت خارج کنید یا اضافه کنید:
-// import { lesson3 } from './lessons/lesson3.js';
+import { lesson3 } from './lessons/lesson3.js';
+import { lesson4 } from './lessons/lesson4.js';
+import { lesson5 } from './lessons/lesson5.js';
+import { lesson6 } from './lessons/lesson6.js';
+import { lesson7 } from './lessons/lesson7.js';
+import { lesson8 } from './lessons/lesson8.js';
+import { lesson9 } from './lessons/lesson9.js';
+import { lesson10 } from './lessons/lesson10.js';
+// (می‌توانید به همین ترتیب تا ۶۰ را یک‌بار اینجا اضافه کنید یا هر زمان که فایل lessonX را ساختید، فقط همان یک خط را اضافه کنید)
 
-// برای اینکه تا درس ۶۰ هر بار مجبور به تغییر نشوید، می‌توانید تمام آن‌ها را به صورت دستی اما یکجا در آرایه‌ی زیر داشته باشید:
+// آرایه نهایی تمام درس‌ها
 export const lessons = [
   lesson0,
   lesson1,
   lesson2,
-  // lesson3,
-  // lesson4,
+  lesson3,
+  lesson4,
+  lesson5,
+  lesson6,
+  lesson7,
+  lesson8,
+  lesson9,
+  lesson10,
+  // اگر درس‌های ۱۱ به بعد را ساختید، به مرور اینجا اضافه کنید:
+  // lesson11,
   // ... تا lesson60
 ];
