@@ -22,14 +22,12 @@ export default {
         const chatId = update.message.chat.id;
         const text = update.message.text.trim();
         
+        const isMember = await checkUserMembership(token, chatId);
+        if (!isMember) return new Response("OK");
+
         if (text.startsWith("/start")) {
-          const isMember = await checkUserMembership(token, chatId);
-          if (!isMember) return new Response("OK");
           await handleStart(token, chatId, db);
         } else {
-          const isMember = await checkUserMembership(token, chatId);
-          if (!isMember) return new Response("OK");
-
           await telegramFetch(token, "sendMessage", {
             chat_id: chatId,
             text: "لطفاً از دکمه‌های منو استفاده کنید."
@@ -50,7 +48,7 @@ export default {
           } else {
             await telegramFetch(token, "answerCallbackQuery", { 
               callback_query_id: update.callback_query.id, 
-              text: "شما هنوز در هر دو کانال عضو نشده‌اید!", 
+              text: "شما هنوز در هر دو کانال عضو نشده‌اید یا ربات در کانال‌ها ادمین نیست!", 
               show_alert: true 
             });
           }
@@ -85,7 +83,7 @@ async function checkUserMembership(token, chatId) {
 
     await telegramFetch(token, "sendMessage", {
       chat_id: chatId,
-      text: "❌ برای استفاده از ربات، لطفاً ابتدا در **دو کانال زیر** عضو شوید و سپس روی دکمه‌ی بررسی عضویت کلیک کنید:",
+      text: "❌ برای استفاده از ربات، لطفاً ابتدا در **دو کانال زیر** عضو شوید و سپس روی دکمه‌ی بررسی عضویت کلیک کنید:\n\n1️⃣ " + CHANNEL_1 + "\n2️⃣ " + CHANNEL_2,
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
@@ -98,16 +96,24 @@ async function checkUserMembership(token, chatId) {
 
     return false;
   } catch (e) {
-    return false;
+    console.error("Membership check error:", e);
+    // اگر به دلیل ادمین نبودن ربات ارور داد، موقتاً اجازه عبور می‌دهیم یا پیام خطا می‌دهیم
+    return true; 
   }
 }
 
 async function handleStart(token, chatId, db) {
   let progress = 0;
-  try {
-    const { results } = await db.prepare("SELECT last_lesson FROM users WHERE chat_id = ?").bind(chatId).all();
-    if (results && results.length > 0) progress = results[0].last_lesson;
-  } catch (e) {}
+  if (db) {
+    try {
+      const { results } = await db.prepare("SELECT last_lesson FROM users WHERE chat_id = ?").bind(String(chatId)).all();
+      if (results && results.length > 0) {
+        progress = results[0].last_lesson;
+      }
+    } catch (e) {
+      console.error("DB Read Error:", e);
+    }
+  }
 
   let keyboard = [
     [{ text: `🚀 ورود به پنل درس‌ها (آخرین پیشرفت: بخش ${progress + 1})`, callback_data: `menu_${progress}` }],
@@ -241,11 +247,15 @@ async function handleCallback(token, q, db) {
     if (selected === lesson.correct) {
       resMsg = "✅ پاسخ شما کاملاً درست است! این بخش را با موفقیت یاد گرفتید. 👏";
       
-      try {
-        await db.prepare(
-          "INSERT INTO users (chat_id, last_lesson) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET last_lesson = ?"
-        ).bind(chatId, lessonId + 1, lessonId + 1).run();
-      } catch (e) {}
+      if (db) {
+        try {
+          await db.prepare(
+            "INSERT INTO users (chat_id, last_lesson) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET last_lesson = ?"
+          ).bind(String(chatId), lessonId + 1, lessonId + 1).run();
+        } catch (e) {
+          console.error("DB Write Error:", e);
+        }
+      }
 
       if (lessonId + 1 < lessons.length) {
         nextButtons.push({ text: "🚀 رفتن به درس بعدی", callback_data: `menu_${lessonId + 1}` });
@@ -279,5 +289,7 @@ async function telegramFetch(token, method, body) {
       body: JSON.stringify(body)
     });
     return await res.json();
-  } catch (e) {}
-        }
+  } catch (e) {
+    console.error("Telegram Fetch Error:", e);
+  }
+}
