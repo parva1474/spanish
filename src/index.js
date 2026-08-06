@@ -132,7 +132,6 @@ async function handleStart(token, chatId, db) {
     } catch (e) {}
   }
 
-  // جلوگیری از خطای خارج از محدوده اگر پیشرفت از تعداد درس‌ها بیشتر شد
   if (progress >= lessons.length) progress = lessons.length - 1;
 
   await telegramFetch(token, "sendMessage", {
@@ -181,7 +180,7 @@ async function sendLessonMenu(token, chatId, lessonId) {
         [{ text: "📦 ۱. واژه‌نامه و تلفظ کلمات", callback_data: `step_vocab_${lessonId}` }],
         [{ text: "📖 ۲. ریدینگ و تلفظ متن", callback_data: `step_reading_${lessonId}` }],
         [{ text: "💡 ۳. تحلیل و نکات گرامری", callback_data: `step_analysis_${lessonId}` }],
-        [{ text: "✍️ ۴. آزمون و سنجش تسلط", callback_data: `quiz_${lessonId}` }]
+        [{ text: "✍️ ۴. آزمون و سنجش تسلط", callback_data: `quiz_${lessonId}_0` }]
       ]
     }
   });
@@ -238,7 +237,7 @@ async function handleCallback(token, q, db) {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "✍️ ورود به آزمون این بخش", callback_data: `quiz_${lessonId}` }],
+          [{ text: "✍️ ورود به آزمون این بخش", callback_data: `quiz_${lessonId}_0` }],
           [{ text: "🔙 بازگشت به منوی درس", callback_data: `menu_${lessonId}` }]
         ]
       }
@@ -257,49 +256,64 @@ async function handleCallback(token, q, db) {
     });
   }
   else if (data.startsWith("quiz_")) {
-    const lessonId = parseInt(data.split("_")[1]);
+    const parts = data.split("_");
+    const lessonId = parseInt(parts[1]);
+    const qIndex = parseInt(parts[2]) || 0;
     const lesson = lessons[lessonId];
     
+    if (!lesson.questions || lesson.questions.length === 0) {
+      await telegramFetch(token, "sendMessage", { chat_id: chatId, text: "آزمونی برای این درس ثبت نشده است." });
+      return;
+    }
+
+    const currentQ = lesson.questions[qIndex];
     const keyboard = [];
-    lesson.options.forEach((opt, idx) => {
-      keyboard.push([{ text: opt, callback_data: `ans_${lessonId}_${idx}` }]);
+    currentQ.options.forEach((opt, idx) => {
+      keyboard.push([{ text: opt, callback_data: `ans_${lessonId}_${qIndex}_${idx}` }]);
     });
     keyboard.push([{ text: "🔙 بازگشت به منوی درس", callback_data: `menu_${lessonId}` }]);
 
     await telegramFetch(token, "sendMessage", {
       chat_id: chatId,
-      text: `❓ **آزمون ارزیابی - ${lesson.title}**:\n\n${lesson.question}`,
+      text: `❓ **آزمون (${currentQ.type}) - سوال ${qIndex + 1} از ${lesson.questions.length}**\n\n${currentQ.text}`,
       reply_markup: { inline_keyboard: keyboard }
     });
   }
   else if (data.startsWith("ans_")) {
     const parts = data.split("_");
     const lessonId = parseInt(parts[1]);
-    const selected = parseInt(parts[2]);
+    const qIndex = parseInt(parts[2]);
+    const selected = parseInt(parts[3]);
     const lesson = lessons[lessonId];
+    const currentQ = lesson.questions[qIndex];
     
     let resMsg = "";
     let nextButtons = [];
     
-    if (selected === lesson.correct) {
-      resMsg = "✅ پاسخ شما کاملاً درست است! این بخش را با موفقیت یاد گرفتید. 👏";
+    if (selected === currentQ.correct) {
+      resMsg = "✅ پاسخ شما درست است! 👏";
       
-      if (db) {
-        try {
-          await db.prepare(
-            "INSERT INTO users (chat_id, last_lesson) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET last_lesson = ?"
-          ).bind(String(chatId), lessonId + 1, lessonId + 1).run();
-        } catch (e) {}
-      }
-
-      if (lessonId + 1 < lessons.length) {
-        nextButtons.push({ text: "🚀 رفتن به درس بعدی", callback_data: `menu_${lessonId + 1}` });
+      if (qIndex + 1 < lesson.questions.length) {
+        nextButtons.push({ text: "➡️ سوال بعدی آزمون", callback_data: `quiz_${lessonId}_${qIndex + 1}` });
       } else {
-        nextButtons.push({ text: "🎉 تبریک! تمام ۶۰ درس دوره به اتمام رسید!", callback_data: "menu_0" });
+        resMsg += "\n\n🎉 تبریک! آزمون این درس را به طور کامل با موفقیت به پایان رساندید.";
+        if (db) {
+          try {
+            await db.prepare(
+              "INSERT INTO users (chat_id, last_lesson) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET last_lesson = ?"
+            ).bind(String(chatId), lessonId + 1, lessonId + 1).run();
+          } catch (e) {}
+        }
+
+        if (lessonId + 1 < lessons.length) {
+          nextButtons.push({ text: "🚀 رفتن به درس بعدی", callback_data: `menu_${lessonId + 1}` });
+        } else {
+          nextButtons.push({ text: "🏠 بازگشت به منوی اصلی", callback_data: "menu_0" });
+        }
       }
     } else {
-      resMsg = `❌ پاسخ نادرست بود.\nپاسخ صحیح: ${lesson.options[lesson.correct]}`;
-      nextButtons.push({ text: "🔄 تلاش مجدد در آزمون", callback_data: `quiz_${lessonId}` });
+      resMsg = `❌ پاسخ نادرست بود.\nپاسخ صحیح: ${currentQ.options[currentQ.correct]}`;
+      nextButtons.push({ text: "🔄 تکرار همین سوال", callback_data: `quiz_${lessonId}_${qIndex}` });
       nextButtons.push({ text: "📖 مرور مجدد درس", callback_data: `menu_${lessonId}` });
     }
 
@@ -322,4 +336,4 @@ async function telegramFetch(token, method, body) {
     });
     return await res.json();
   } catch (e) {}
-}
+      }
