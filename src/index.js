@@ -267,6 +267,19 @@ async function handleCallback(token, q, db) {
     }
 
     const currentQ = lesson.questions[qIndex];
+
+    // اگر سوال لیسنینگ بود، ابتدا فایل صوتیِ مخصوص همان سوال ارسال شود
+    if (currentQ.type === "لیسنینگ" && currentQ.audioText) {
+      const cleanText = encodeURIComponent(currentQ.audioText);
+      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=es&client=tw-ob`;
+
+      await telegramFetch(token, "sendAudio", {
+        chat_id: chatId,
+        audio: audioUrl,
+        title: "🎧 فایل صوتی آزمون لیسنینگ"
+      });
+    }
+
     const keyboard = [];
     currentQ.options.forEach((opt, idx) => {
       keyboard.push([{ text: opt, callback_data: `ans_${lessonId}_${qIndex}_${idx}` }]);
@@ -336,4 +349,4 @@ async function telegramFetch(token, method, body) {
     });
     return await res.json();
   } catch (e) {}
-      }
+  }
