@@ -1,95 +1,12 @@
 // src/lessons.js
+import { lesson0 } from './lessons/lesson0.js';
+import { lesson1 } from './lessons/lesson1.js';
+// با ساخت فایل‌های lesson2 تا lesson60، کافیست آن‌ها را اینجا ایمپورت کنید:
+// import { lesson2 } from './lessons/lesson2.js';
+
 export const lessons = [
-  {
-    id: 0,
-    title: "الفبای زبان اسپانیایی (Abecedario / El Alfabeto)",
-    vocab: 
-      "• A ➔ آ\n" +
-      "• B ➔ بِ\n" +
-      "• C ➔ سِ\n" +
-      "• Ch ➔ چِ\n" +
-      "• D ➔ دِ\n" +
-      "• E ➔ اِ\n" +
-      "• F ➔ افِه\n" +
-      "• G ➔ خِه\n" +
-      "• H ➔ آچِ (صامت)\n" +
-      "• I ➔ ای",
-    phoneticVocab: "🔤 راهنمای تلفظ حروف:\nحرف H در اسپانیایی کاملاً بی‌صدا است و خوانده نمی‌شود.",
-    reading: "🇪🇸 El Abecedario en español\n🇮🇷 الفبای زبان اسپانیایی از ۲۹ حرف تشکیل شده است.",
-    phoneticReading: "🔤 تلفظ متن:\n• El Abecedario en español\n(ال آبسه‌داریو ان اسپانیول)",
-    audioText: "El Abecedario en español. A, B, C, Ch, D, E, F, G, H, I.",
-    analysis: "نکته مهم الفبا:\nحرف 'H' در زبان اسپانیایی صامت است و تلفظ نمی‌شود.",
-    question: "حرف 'H' در الفبای اسپانیایی چگونه تلفظ می‌شود؟",
-    options: ["تلفظ می‌شود (ه)", "اصلاً خوانده نمی‌شود (صامت)", "مانند ج تلفظ می‌شود", "مانند چ تلفظ می‌شود"],
-    correct: 1
-  },
-  {
-    id: 1,
-    title: "درس اول: سلام و احوالپرسی (Saludo y Conversación)",
-    vocab: 
-      "• ¡Hola! ➔ اولا ➔ سلام\n" +
-      "• nombre ➔ نومبر ➔ اسم\n" +
-      "• Mi nombre es... ➔ می نومبر اس... ➔ اسم من است...\n" +
-      "• Yo soy... ➔ یو سوی... ➔ من هستم\n" +
-      "• ¿Cómo se llama usted? ➔ کومو سِ یاما اوستِد ➔ اسم شما چیست؟ (رسمی)\n" +
-      "• ¿Cómo te llamas? ➔ کومو تِ یاماس ➔ اسم تو چیست؟ (غیررسمی)\n" +
-      "• volver ➔ بولبر ➔ برگشتن\n" +
-      "• regresar ➔ رگرسار ➔ بازگشتن\n" +
-      "• ¿Cómo está(n)? ➔ کومو اوستان ➔ حال شما چطور است؟ (رسمی)\n" +
-      "• ¿Qué tal? ➔ کِ تال ➔ چطوری؟ (غیررسمی)\n" +
-      "• ¡Buenos días! ➔ بویناس دیاس ➔ روز به خیر\n" +
-      "• ¡Buenos tardes! ➔ بویناس تاردِس ➔ عصر به خیر\n" +
-      "• ¡Buenos noches! ➔ بویناس نوچِس ➔ شب به خیر\n" +
-      "• por la mañana ➔ پور لا مانیانا ➔ صبح\n" +
-      "• tarde ➔ تاردِه ➔ عصر\n" +
-      "• noche ➔ نوچِه ➔ شب\n" +
-      "• día ➔ دیا ➔ روز\n" +
-      "• hoy ➔ اوی ➔ امروز\n" +
-      "• Visitar a... ➔ بیسیتار آ... ➔ دیدار کردن از...\n" +
-      "• gracias ➔ گراثییاس ➔ متشکرم\n" +
-      "• sí ➔ سی ➔ بله\n" +
-      "• no ➔ نو ➔ نه\n" +
-      "• también ➔ تامبیین ➔ همین طور\n" +
-      "• hace mucho tiempo ➔ آس موچو تیمپو ➔ از مدت‌ها پیش\n" +
-      "• tampoco ➔ تامپوکو ➔ نه نیز هم\n" +
-      "• conmigo ➔ کونمیگو ➔ با من\n" +
-      "• contigo ➔ کونتیگو ➔ با تو\n" +
-      "• con él, ella, usted ➔ کون ایل، ایا، اوستِد ➔ با او / شما\n" +
-      "• anoche ➔ آنوچِه ➔ دیشب\n" +
-      "• allá ➔ آیا ➔ آنجا\n" +
-      "• aquí ➔ آکی ➔ اینجا\n" +
-      "• ayer ➔ آیر ➔ دیروز\n" +
-      "• mañana ➔ مانیانا ➔ فردا\n" +
-      "• plaza ➔ پلاتا ➔ میدان\n" +
-      "• hora ➔ اورا ➔ ساعت\n" +
-      "• cita ➔ ثیتا ➔ قرار ملاقات\n" +
-      "• adiós ➔ آدیبوس ➔ خداحافظ\n" +
-      "• ¡Hasta luego! ➔ آستا لواگو ➔ تا بعد",
-    phoneticVocab: "🔤 تمام کلمات بالا به همراه تلفظ دقیق و معنی فارسی به صورت خط‌به‌خط تنظیم شدند.",
-    reading: 
-      "🇪🇸 Conversación:\n" +
-      "- ¡Buenos días!\n" +
-      "- ¡Buenos días señor Rodríguez!\n" +
-      "- ¡Buenos días señora Iglesias!, ¿Cómo está usted?\n" +
-      "- Estoy bien, gracias. ¿Y usted?\n" +
-      "- Estoy bien.\n" +
-      "- Hace mucho tiempo que no nos hemos visto. ¿Dónde has estado?\n" +
-      "- Fui a Argentina para una misión.\n" +
-      "- ¿Cuándo volviste?\n" +
-      "- Regresé ayer.\n" +
-      "- ¿Podemos vernos el domingo?\n" +
-      "- ¿Dónde nos vemos?\n" +
-      "- En la plaza principal de la ciudad.\n" +
-      "- ¿A qué hora?\n" +
-      "- ¿Está bien a las nueve?\n" +
-      "- Sí. Está muy bien.\n" +
-      "- ¡Adiós!\n" +
-      "- ¡Hasta el domingo a las nueve!",
-    phoneticReading: "🔤 تلفظ خط‌به‌خط مکالمه در بخش صوتی و متن قابل تمرین است.",
-    audioText: "Buenos días señor Rodríguez. Buenos días señora Iglesias, ¿Cómo está usted? Estoy bien, gracias. ¿Y usted? Fui a Argentina para una misión. Regresé ayer.",
-    analysis: "💡 تحلیل گرامری درس اول:\n1. برای معرفی خود از 'Mi nombre es' یا 'Yo soy' استفاده می‌شود.\n2. علامت سوال در زبان اسپانیایی هم در آخر و هم به صورت برعکس (¿) در اول جمله قرار می‌گیرد.",
-    question: "معنای عبارت «Hace mucho tiempo» چیست؟",
-    options: ["دیروز عصر", "از مدت‌ها پیش", "فردا صبح", "قرار ملاقات"],
-    correct: 1
-  }
+  lesson0,
+  lesson1,
+  // lesson2,
+  // و به همین ترتیب تا درس ۶۰...
 ];
