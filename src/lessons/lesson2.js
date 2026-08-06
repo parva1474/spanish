@@ -1,4 +1,5 @@
-  {
+// src/lessons/lesson2.js
+export const lesson2 = {
     title: "درس دوم: خانواده من (Mi familia)",
     vocab: 
       "• familia (فامیلیا) → ||خانواده||\n" +
@@ -27,10 +28,10 @@
       "4- Esta es mi familia.\n" +
       "5- Mi padre se llama Alex y mi madre Cristina.\n" +
       "6- Mi padre es ingeniero y mi madre es ama de casa.\n" +
-      "7- Esta es mi hermana Idh. Es violinista y tiene doce años.\n" +
+      "7- Esta es mi hermana Idh. Es violinista و tiene doce años.\n" +
       "8- Tengo dos hermanas más.\n" +
-      "9- Ellas se llaman Lola y Laura.\n" +
-      "10- Lola es médica y Laura traductora.",
+      "9- Ellas se llaman Lola و Laura.\n" +
+      "10- Lola es médica و Laura traductora.",
     phoneticReading: 
       "1- ای هولا!\n" +
       "2- مه یامو آنا.\n" +
@@ -110,4 +111,4 @@
         correct: 2
       }
     ]
-}
+};
