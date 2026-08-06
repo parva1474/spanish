@@ -25,12 +25,24 @@ export default {
         const isMember = await checkUserMembership(token, chatId);
         if (!isMember) return new Response("OK");
 
-        if (text.startsWith("/start")) {
+        // مدیریت کلیدهای ثابت پایین صفحه
+        if (text.startsWith("/start") || text === "🏠 منوی اصلی") {
           await handleStart(token, chatId, db);
+        } else if (text === "🚀 ادامه یادگیری (پنل درس‌ها)") {
+          await handleQuickMenu(token, chatId, db);
+        } else if (text === "📚 فهرست کامل درس‌ها") {
+          await showLessonList(token, chatId);
+        } else if (text === "❓ راهنما") {
+          await telegramFetch(token, "sendMessage", {
+            chat_id: chatId,
+            text: "راهنما: از دکمه‌های پایین صفحه برای دسترسی سریع به پنل درس‌ها، فهرست و شروع استفاده کنید.",
+            reply_markup: getPersistentKeyboard()
+          });
         } else {
           await telegramFetch(token, "sendMessage", {
             chat_id: chatId,
-            text: "لطفاً از دکمه‌های منو استفاده کنید."
+            text: "لطفاً از دکمه‌های پایین صفحه استفاده کنید.",
+            reply_markup: getPersistentKeyboard()
           });
         }
       } else if (update.callback_query) {
@@ -68,6 +80,18 @@ export default {
   }
 };
 
+// تابع ساخت کیبورد دائمی پایین صفحه
+function getPersistentKeyboard() {
+  return {
+    keyboard: [
+      [{ text: "🚀 ادامه یادگیری (پنل درس‌ها)" }],
+      [{ text: "📚 فهرست کامل درس‌ها" }, { text: "❓ راهنما" }]
+    ],
+    resize_keyboard: true,
+    persistent: true
+  };
+}
+
 async function checkUserMembership(token, chatId) {
   try {
     const res1 = await telegramFetch(token, "getChatMember", { chat_id: CHANNEL_1, user_id: chatId });
@@ -96,8 +120,6 @@ async function checkUserMembership(token, chatId) {
 
     return false;
   } catch (e) {
-    console.error("Membership check error:", e);
-    // اگر به دلیل ادمین نبودن ربات ارور داد، موقتاً اجازه عبور می‌دهیم یا پیام خطا می‌دهیم
     return true; 
   }
 }
@@ -110,20 +132,58 @@ async function handleStart(token, chatId, db) {
       if (results && results.length > 0) {
         progress = results[0].last_lesson;
       }
-    } catch (e) {
-      console.error("DB Read Error:", e);
-    }
+    } catch (e) {}
   }
-
-  let keyboard = [
-    [{ text: `🚀 ورود به پنل درس‌ها (آخرین پیشرفت: بخش ${progress + 1})`, callback_data: `menu_${progress}` }],
-    [{ text: "📚 فهرست کامل درس‌ها", callback_data: "list_lessons" }]
-  ];
 
   await telegramFetch(token, "sendMessage", {
     chat_id: chatId,
-    text: "سلام! به آکادمی آموزش زبان اسپانیایی (بر اساس کتاب آرام خواجه‌وند) خوش آمدید. 🎓\n\nهر بخش شامل واژه‌نامه الفبا/کلمات، تلفظ خط‌به‌خط زیرهم، ریدینگ، تحلیل گرامر و آزمون است.",
+    text: `سلام! به آکادمی آموزش زبان اسپانیایی (بر اساس کتاب آرام خواجه‌وند) خوش آمدید. 🎓\n\nآخرین پیشرفت شما: بخش ${progress + 1}\nبرای شروع یا ادامه از دکمه‌های پایین صفحه استفاده کنید.`,
+    reply_markup: getPersistentKeyboard()
+  });
+
+  // ارسال پنل مستقیم درس فعلی
+  await sendLessonMenu(token, chatId, progress);
+}
+
+async function handleQuickMenu(token, chatId, db) {
+  let progress = 0;
+  if (db) {
+    try {
+      const { results } = await db.prepare("SELECT last_lesson FROM users WHERE chat_id = ?").bind(String(chatId)).all();
+      if (results && results.length > 0) {
+        progress = results[0].last_lesson;
+      }
+    } catch (e) {}
+  }
+  await sendLessonMenu(token, chatId, progress);
+}
+
+async function showLessonList(token, chatId) {
+  let keyboard = [];
+  lessons.forEach((l, idx) => {
+    keyboard.push([{ text: l.title, callback_data: `menu_${idx}` }]);
+  });
+  await telegramFetch(token, "sendMessage", {
+    chat_id: chatId,
+    text: "📚 فهرست کامل درس‌های سیستم آموزشی:",
     reply_markup: { inline_keyboard: keyboard }
+  });
+}
+
+async function sendLessonMenu(token, chatId, lessonId) {
+  const lesson = lessons[lessonId] || lessons[0];
+  await telegramFetch(token, "sendMessage", {
+    chat_id: chatId,
+    text: `📖 **${lesson.title}**\n\nبرای یادگیری این بخش، گزینه‌های زیر را انتخاب کنید:`,
+    parse_mode: "Markdown",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "📦 ۱. واژه‌نامه و تلفظ کلمات", callback_data: `step_vocab_${lessonId}` }],
+        [{ text: "📖 ۲. ریدینگ و تلفظ متن", callback_data: `step_reading_${lessonId}` }],
+        [{ text: "💡 ۳. تحلیل و نکات گرامری", callback_data: `step_analysis_${lessonId}` }],
+        [{ text: "✍️ ۴. آزمون و سنجش تسلط", callback_data: `quiz_${lessonId}` }]
+      ]
+    }
   });
 }
 
@@ -132,34 +192,11 @@ async function handleCallback(token, q, db) {
   const chatId = q.message.chat.id;
   
   if (data === "list_lessons") {
-    let keyboard = [];
-    lessons.forEach((l, idx) => {
-      keyboard.push([{ text: l.title, callback_data: `menu_${idx}` }]);
-    });
-    await telegramFetch(token, "sendMessage", {
-      chat_id: chatId,
-      text: "لیست کامل درس‌های سیستم آموزشی:",
-      reply_markup: { inline_keyboard: keyboard }
-    });
+    await showLessonList(token, chatId);
   } 
   else if (data.startsWith("menu_")) {
     const lessonId = parseInt(data.split("_")[1]);
-    const lesson = lessons[lessonId] || lessons[0];
-    
-    await telegramFetch(token, "sendMessage", {
-      chat_id: chatId,
-      text: `📖 **${lesson.title}**\n\nبرای یادگیری این بخش، گزینه‌های زیر را انتخاب کنید:`,
-      parse_mode: "Markdown",
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "📦 ۱. واژه‌نامه و تلفظ کلمات", callback_data: `step_vocab_${lessonId}` }],
-          [{ text: "📖 ۲. ریدینگ و تلفظ متن", callback_data: `step_reading_${lessonId}` }],
-          [{ text: "💡 ۳. تحلیل و نکات گرامری", callback_data: `step_analysis_${lessonId}` }],
-          [{ text: "✍️ ۴. آزمون و سنجش تسلط", callback_data: `quiz_${lessonId}` }],
-          [{ text: "🏠 منوی اصلی", callback_data: "back_home" }]
-        ]
-      }
-    });
+    await sendLessonMenu(token, chatId, lessonId);
   }
   else if (data.startsWith("step_vocab_")) {
     const lessonId = parseInt(data.split("_")[2]);
@@ -252,15 +289,13 @@ async function handleCallback(token, q, db) {
           await db.prepare(
             "INSERT INTO users (chat_id, last_lesson) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET last_lesson = ?"
           ).bind(String(chatId), lessonId + 1, lessonId + 1).run();
-        } catch (e) {
-          console.error("DB Write Error:", e);
-        }
+        } catch (e) {}
       }
 
       if (lessonId + 1 < lessons.length) {
         nextButtons.push({ text: "🚀 رفتن به درس بعدی", callback_data: `menu_${lessonId + 1}` });
       } else {
-        nextButtons.push({ text: "🎉 تبریک! تمام بخش‌های فعلی به پایان رسید", callback_data: "back_home" });
+        nextButtons.push({ text: "🎉 تبریک! تمام بخش‌های فعلی به پایان رسید", callback_data: "menu_0" });
       }
     } else {
       resMsg = `❌ پاسخ نادرست بود.\nپاسخ صحیح: ${lesson.options[lesson.correct]}`;
@@ -274,9 +309,6 @@ async function handleCallback(token, q, db) {
       reply_markup: { inline_keyboard: [nextButtons] }
     });
   }
-  else if (data === "back_home") {
-    await handleStart(token, chatId, db);
-  }
   
   await telegramFetch(token, "answerCallbackQuery", { callback_query_id: q.id });
 }
@@ -289,7 +321,5 @@ async function telegramFetch(token, method, body) {
       body: JSON.stringify(body)
     });
     return await res.json();
-  } catch (e) {
-    console.error("Telegram Fetch Error:", e);
-  }
-}
+  } catch (e) {}
+        }
