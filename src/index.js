@@ -246,8 +246,15 @@ async function handleCallback(token, q, db) {
   else if (data.startsWith("audio_")) {
     const lessonId = parseInt(data.split("_")[1]);
     const lesson = lessons[lessonId];
-    const cleanText = encodeURIComponent(lesson.audioText);
-    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=es&client=tw-ob`;
+    
+    // بهبود متن صوتی با اضافه کردن نقاط و مکث‌های کوتاه برای خوانش طبیعی‌تر و کامل‌تر
+    let textToRead = lesson.audioText || lesson.reading;
+    // افزودن مکث با قرار دادن نقاط و کاما بین خطوط جهت جلوگیری از تند خواندن
+    textToRead = textToRead.replace(/\n/g, ". ");
+
+    const cleanText = encodeURIComponent(textToRead);
+    // استفاده از پارامترهای بهینه‌تر برای سرویس صوت گوگل
+    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=es&client=tw-ob&ttsspeed=0.8`;
 
     await telegramFetch(token, "sendAudio", {
       chat_id: chatId,
@@ -268,10 +275,9 @@ async function handleCallback(token, q, db) {
 
     const currentQ = lesson.questions[qIndex];
 
-    // اگر سوال لیسنینگ بود، ابتدا فایل صوتیِ مخصوص همان سوال ارسال شود
     if (currentQ.type === "لیسنینگ" && currentQ.audioText) {
       const cleanText = encodeURIComponent(currentQ.audioText);
-      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=es&client=tw-ob`;
+      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=es&client=tw-ob&ttsspeed=0.8`;
 
       await telegramFetch(token, "sendAudio", {
         chat_id: chatId,
@@ -349,4 +355,4 @@ async function telegramFetch(token, method, body) {
     });
     return await res.json();
   } catch (e) {}
-  }
+}
