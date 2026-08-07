@@ -3,7 +3,7 @@ import { lessons } from './lessons.js';
 
 const CHANNEL_1 = "@nwechannell"; 
 const CHANNEL_2 = "@parvapoem"; 
-const ADMIN_ID = "109710949"; // آیدی عددی شما
+const ADMIN_ID = "109710949"; 
 
 export default {
   async fetch(request, env, ctx) {
@@ -41,12 +41,10 @@ export default {
                DO UPDATE SET is_paid = 1`
             ).bind(String(targetChatId)).run();
 
-            const result = await telegramFetch(token, "sendMessage", {
+            await telegramFetch(token, "sendMessage", {
               chat_id: chatId,
               text: `✅ دسترسی کاربر ${targetChatId} فعال شد.`
             });
-
-            console.log("Approve result:", JSON.stringify(result));
 
             await telegramFetch(token, "sendMessage", {
               chat_id: targetChatId,
@@ -54,8 +52,6 @@ export default {
             });
 
           } catch (e) {
-            console.error("APPROVE ERROR:", e);
-
             await telegramFetch(token, "sendMessage", {
               chat_id: chatId,
               text: `❌ خطا هنگام تأیید کاربر:\n${e.message || e}`
@@ -94,7 +90,6 @@ export default {
             });
 
           } catch (e) {
-            console.error("REVOKE ERROR:", e);
             await telegramFetch(token, "sendMessage", {
               chat_id: chatId,
               text: `❌ خطا هنگام لغو دسترسی کاربر:\n${e.message || e}`
@@ -186,6 +181,7 @@ export default {
     return new Response("OK");
   }
 };
+// ادامه بخش دوم فایل src/index.js
 
 function getPersistentKeyboard() {
   return {
@@ -413,7 +409,6 @@ async function handleCallback(token, q, db) {
     const lessonId = parseInt(data.split("_")[2]);
     const lesson = lessons[lessonId];
     
-    // 🚨 اعمال اسپویلر (مخفی کردن ترجمه و تلفظ زیرنویس با قابلیت کلیک)
     let readingText = lesson.reading;
     let hiddenTranslation = lesson.phoneticReading ? `\n\n||${lesson.phoneticReading}||` : "";
 
@@ -423,7 +418,7 @@ async function handleCallback(token, q, db) {
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "🗣 پخش تلفظ صوتی این متن", callback_data: `audio_${lessonId}` }],
+          [{ text: "🗣 پخش تلفظ صوتی این متن (دو بخش)", callback_data: `audio_${lessonId}` }],
           [{ text: "➡️ مرحله بعد: تحلیل و گرامر", callback_data: `step_analysis_${lessonId}` }],
           [{ text: "🔙 بازگشت به منوی درس", callback_data: `menu_${lessonId}` }]
         ]
@@ -449,21 +444,35 @@ async function handleCallback(token, q, db) {
     const lessonId = parseInt(data.split("_")[1]);
     const lesson = lessons[lessonId];
     
-    // 🚨 رفع محدودیت طول صوت گوگل (برش هوشمند متن تا کاراکترهای بیشتر برای پوشش کامل ریدینگ)
-    let textToRead = lesson.audioText || lesson.reading;
-    if (textToRead.length > 500) {
-      textToRead = textToRead.substring(0, 500);
+    let fullText = lesson.audioText || lesson.reading;
+    fullText = fullText.replace(/\n/g, ". ");
+
+    // تقسیم متن به دو بخش برای ارسال دو فایل صوتی مجزا جهت حل کامل مشکل محدودیت زمان/کاراکتر
+    let midIndex = Math.floor(fullText.length / 2);
+    // پیدا کردن اولین نقطه نزدیک وسط برای برش تمیزتر جمله
+    let splitPoint = fullText.indexOf('.', midIndex);
+    if (splitPoint === -1) splitPoint = midIndex; else splitPoint += 1;
+
+    let part1 = fullText.substring(0, splitPoint).trim();
+    let part2 = fullText.substring(splitPoint).trim();
+
+    if (part1) {
+      const audioUrl1 = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(part1)}&tl=es&client=tw-ob&ttsspeed=0.8`;
+      await telegramFetch(token, "sendAudio", {
+        chat_id: chatId,
+        audio: audioUrl1,
+        title: `تلفظ صوتی (بخش اول) - ${lesson.title}`
+      });
     }
-    textToRead = textToRead.replace(/\n/g, ". ");
 
-    const cleanText = encodeURIComponent(textToRead);
-    const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=es&client=tw-ob&ttsspeed=0.8`;
-
-    await telegramFetch(token, "sendAudio", {
-      chat_id: chatId,
-      audio: audioUrl,
-      title: `تلفظ صوتی - ${lesson.title}`
-    });
+    if (part2) {
+      const audioUrl2 = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(part2)}&tl=es&client=tw-ob&ttsspeed=0.8`;
+      await telegramFetch(token, "sendAudio", {
+        chat_id: chatId,
+        audio: audioUrl2,
+        title: `تلفظ صوتی (بخش دوم) - ${lesson.title}`
+      });
+    }
   }
   else if (data.startsWith("quiz_")) {
     const parts = data.split("_");
@@ -571,4 +580,4 @@ async function telegramFetch(token, method, body) {
     console.error(`Telegram Fetch Error [${method}]:`, e);
     return null;
   }
-}
+        }
