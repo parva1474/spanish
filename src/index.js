@@ -20,7 +20,7 @@ export default {
         const chatId = update.message.chat.id;
         const text = update.message.text.trim();
         
-        // 🚨 بررسی دستور ادمین با ریجکس کامل و استاندارد در خط اول
+        // 🚨 بررسی دستور تأیید کاربر (/approve)
         const approveMatch = text.match(/^\/approve(?:@\w+)?\s+(-?\d+)$/);
 
         if (approveMatch && String(chatId) === ADMIN_ID) {
@@ -49,7 +49,24 @@ export default {
 
             console.log("Approve result:", JSON.stringify(result));
 
-                    // 🚨 بررسی دستور حذف دسترسی کاربر
+            await telegramFetch(token, "sendMessage", {
+              chat_id: targetChatId,
+              text: "🎉 پرداخت شما تأیید شد! اکنون به درس‌های ۳ به بعد دسترسی دارید."
+            });
+
+          } catch (e) {
+            console.error("APPROVE ERROR:", e);
+
+            await telegramFetch(token, "sendMessage", {
+              chat_id: chatId,
+              text: `❌ خطا هنگام تأیید کاربر:\n${e.message || e}`
+            });
+          }
+
+          return new Response("OK");
+        }
+
+        // 🚨 بررسی دستور لغو دسترسی کاربر (/revoke)
         const revokeMatch = text.match(/^\/revoke(?:@\w+)?\s+(-?\d+)$/);
 
         if (revokeMatch && String(chatId) === ADMIN_ID) {
@@ -83,23 +100,6 @@ export default {
             await telegramFetch(token, "sendMessage", {
               chat_id: chatId,
               text: `❌ خطا هنگام لغو دسترسی کاربر:\n${e.message || e}`
-            });
-          }
-
-          return new Response("OK");
-        }
-            await telegramFetch(token, "sendMessage", {
-              chat_id: targetChatId,
-              text: "🎉 پرداخت شما تأیید شد! اکنون به درس‌های ۳ به بعد دسترسی دارید."
-            });
-
-          } catch (e) {
-            console.error("APPROVE ERROR:", e);
-
-            await telegramFe
-              tch(token, "sendMessage", {
-              chat_id: chatId,
-              text: `❌ خطا هنگام تأیید کاربر:\n${e.message || e}`
             });
           }
 
@@ -564,7 +564,4 @@ async function telegramFetch(token, method, body) {
 
     return data;
   } catch (e) {
-    console.error(`Telegram Fetch Error [${method}]:`, e);
-    return null;
-  }
-  }
+    console.error(`Telegram
