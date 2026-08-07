@@ -20,7 +20,7 @@ export default {
         const chatId = update.message.chat.id;
         const text = update.message.text.trim();
         
-        // دستور ادمین برای تایید پرداخت
+        // 🚨 بررسی دستور ادمین در همان خط اول (قبل از هرگونه چک کردن عضویت یا موارد دیگر)
         if (text.startsWith("/approve ") && String(chatId) === ADMIN_ID) {
           const targetChatId = text.split(" ")[1];
           if (db) {
@@ -480,4 +480,4 @@ async function telegramFetch(token, method, body) {
     });
     return await res.json();
   } catch (e) {}
-            }
+}
