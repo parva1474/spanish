@@ -560,4 +560,15 @@ async function telegramFetch(token, method, body) {
       }
     );
 
-    const data = await r
+    const data = await res.json();
+
+    if (!data.ok) {
+      console.error(`Telegram API Error [${method}]:`, JSON.stringify(data));
+    }
+
+    return data;
+  } catch (e) {
+    console.error(`Telegram Fetch Error [${method}]:`, e);
+    return null;
+  }
+}
