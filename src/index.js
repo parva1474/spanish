@@ -3,7 +3,7 @@ import { lessons } from './lessons.js';
 
 const CHANNEL_1 = "@nwechannell"; 
 const CHANNEL_2 = "@parvapoem"; 
-const ADMIN_ID = "627711453"; // آیدی عددی شما
+const ADMIN_ID = "109710949"; // آیدی عددی شما
 
 export default {
   async fetch(request, env, ctx) {
