@@ -120,8 +120,8 @@ export default {
             text: "لطفاً از دکمه‌های پایین صفحه استفاده کنید.",
             reply_markup: getPersistentKeyboard()
           });
-        }
-      } else if (update.callback_query) {
+
+          } else if (update.callback_query) {
         const q = update.callback_query;
         const chatId = q.message.chat.id;
         const data = q.data;
@@ -437,7 +437,8 @@ async function handleCallback(token, q, db) {
         ]
       }
     });
-      else if (data.startsWith("step_reading_")) {
+  }
+  else if (data.startsWith("step_reading_")) {
     const lessonId = parseInt(data.split("_")[2]);
     const lesson = lessons[lessonId];
 
@@ -656,7 +657,6 @@ async function handleCallback(token, q, db) {
         });
       }
     }
-
     const keyboard = [];
     currentQ.options.forEach((opt, idx) => {
       keyboard.push([{ text: opt, callback_data: `ans_${lessonId}_${qIndex}_${idx}` }]);
@@ -739,6 +739,4 @@ async function telegramFetch(token, method, body) {
     console.error(`Telegram Fetch Error [${method}]:`, e);
     return null;
   }
-    }
 }
-  
