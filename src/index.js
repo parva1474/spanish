@@ -437,8 +437,7 @@ async function handleCallback(token, q, db) {
         ]
       }
     });
-              }
-    else if (data.startsWith("step_reading_")) {
+      else if (data.startsWith("step_reading_")) {
     const lessonId = parseInt(data.split("_")[2]);
     const lesson = lessons[lessonId];
 
@@ -740,4 +739,6 @@ async function telegramFetch(token, method, body) {
     console.error(`Telegram Fetch Error [${method}]:`, e);
     return null;
   }
-      }
+    }
+}
+  
