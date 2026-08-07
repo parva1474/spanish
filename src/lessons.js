@@ -4,6 +4,12 @@ import { lesson1 } from './lessons/lesson1.js';
 import { lesson2 } from './lessons/lesson2.js';
 import { lesson3 } from './lessons/lesson3.js';
 import { lesson4 } from './lessons/lesson4.js';
+import { lesson4 } from './lessons/lesson5.js';
+import { lesson4 } from './lessons/lesson6.js';
+import { lesson4 } from './lessons/lesson7.js';
+import { lesson4 } from './lessons/lesson8.js';
+import { lesson4 } from './lessons/lesson9.js';
+import { lesson4 } from './lessons/lesson10.js';
 ;
 // (می‌توانید به همین ترتیب تا ۶۰ را یک‌بار اینجا اضافه کنید یا هر زمان که فایل lessonX را ساختید، فقط همان یک خط را اضافه کنید)
 
