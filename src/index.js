@@ -29,7 +29,7 @@ export default {
         } else if (text === "🚀 ادامه یادگیری (پنل درس‌ها)") {
           await handleQuickMenu(token, chatId, db);
         } else if (text === "📚 فهرست کامل درس‌ها") {
-          await showLessonList(token, chatId);
+          await showLessonList(token, chatId, 1);
         } else if (text === "❓ راهنما") {
           await telegramFetch(token, "sendMessage", {
             chat_id: chatId,
@@ -45,8 +45,9 @@ export default {
         }
       } else if (update.callback_query) {
         const chatId = update.callback_query.message.chat.id;
+        const data = update.callback_query.data;
         
-        if (update.callback_query.data === "check_membership") {
+        if (data === "check_membership") {
           const isMember = await checkUserMembership(token, chatId);
           if (isMember) {
             await telegramFetch(token, "answerCallbackQuery", { 
@@ -67,6 +68,14 @@ export default {
 
         const isMember = await checkUserMembership(token, chatId);
         if (!isMember) return new Response("OK");
+
+        // مدیریت صفحه‌بندی فهرست درس‌ها
+        if (data.startsWith("lessons_page_")) {
+          const page = parseInt(data.split("_")[2]);
+          await editLessonList(token, chatId, update.callback_query.message.message_id, page);
+          await telegramFetch(token, "answerCallbackQuery", { callback_query_id: update.callback_query.id });
+          return new Response("OK");
+        }
 
         await handleCallback(token, update.callback_query, db);
       }
@@ -157,15 +166,65 @@ async function handleQuickMenu(token, chatId, db) {
   await sendLessonMenu(token, chatId, progress);
 }
 
-async function showLessonList(token, chatId) {
+// تابع ساخت کیبورد صفحه‌بندی شده برای ۶۱ درس (بدون نمایش توضیحات طولانی در دکمه‌ها)
+function getLessonsKeyboard(page = 1) {
   let keyboard = [];
-  lessons.forEach((l, idx) => {
-    keyboard.push([{ text: l.title, callback_data: `menu_${idx}` }]);
-  });
+  
+  if (page === 1) {
+    keyboard = [
+      [{ text: "الفبای اسپانیایی", callback_data: "lesson_alphabet" }],
+      [{ text: "درس ۱", callback_data: "lesson_1" }, { text: "درس ۲", callback_data: "lesson_2" }],
+      [{ text: "درس ۳", callback_data: "lesson_3" }, { text: "درس ۴", callback_data: "lesson_4" }],
+      [{ text: "درس ۵", callback_data: "lesson_5" }, { text: "درس ۶", callback_data: "lesson_6" }],
+      [{ text: "درس ۷", callback_data: "lesson_7" }, { text: "درس ۸", callback_data: "lesson_8" }],
+      [{ text: "درس ۹", callback_data: "lesson_9" }, { text: "درس ۱۰", callback_data: "lesson_10" }],
+      [{ text: "➡️ صفحه بعد", callback_data: "lessons_page_2" }]
+    ];
+  } else {
+    let startLesson = (page - 1) * 10 + 1;
+    let endLesson = Math.min(page * 10, 61);
+    let row = [];
+    
+    for (let i = startLesson; i <= endLesson; i++) {
+      row.push({ text: `درس ${i}`, callback_data: `lesson_${i}` });
+      if (row.length === 2) {
+        keyboard.push(row);
+        row = [];
+      }
+    }
+    if (row.length > 0) {
+      keyboard.push(row);
+    }
+    
+    let navRow = [];
+    if (page > 1) {
+      navRow.push({ text: "⬅️ صفحه قبل", callback_data: `lessons_page_${page - 1}` });
+    }
+    if (endLesson < 61) {
+      navRow.push({ text: "➡️ صفحه بعد", callback_data: `lessons_page_${page + 1}` });
+    }
+    if (navRow.length > 0) {
+      keyboard.push(navRow);
+    }
+  }
+
+  return { inline_keyboard: keyboard };
+}
+
+async function showLessonList(token, chatId, page = 1) {
   await telegramFetch(token, "sendMessage", {
     chat_id: chatId,
-    text: `📚 فهرست کامل درس‌ها (مجموعه ${lessons.length} بخش):`,
-    reply_markup: { inline_keyboard: keyboard }
+    text: `📚 فهرست کامل درس‌ها (صفحه ${page}):`,
+    reply_markup: getLessonsKeyboard(page)
+  });
+}
+
+async function editLessonList(token, chatId, messageId, page) {
+  await telegramFetch(token, "editMessageText", {
+    chat_id: chatId,
+    message_id: messageId,
+    text: `📚 فهرست کامل درس‌ها (صفحه ${page}):`,
+    reply_markup: getLessonsKeyboard(page)
   });
 }
 
@@ -191,8 +250,19 @@ async function handleCallback(token, q, db) {
   const chatId = q.message.chat.id;
   
   if (data === "list_lessons") {
-    await showLessonList(token, chatId);
+    await showLessonList(token, chatId, 1);
   } 
+  else if (data === "lesson_alphabet") {
+    // فرض بر این است که الفبا جایگاه خاصی دارد یا اولین مورد است
+    await sendLessonMenu(token, chatId, 0);
+  }
+  else if (data.startsWith("lesson_")) {
+    const lessonNum = parseInt(data.split("_")[1]);
+    const lessonId = lessonNum - 1; // تطبیق شماره درس با ایندکس آرایه
+    if (lessons[lessonId]) {
+      await sendLessonMenu(token, chatId, lessonId);
+    }
+  }
   else if (data.startsWith("menu_")) {
     const lessonId = parseInt(data.split("_")[1]);
     await sendLessonMenu(token, chatId, lessonId);
@@ -247,13 +317,10 @@ async function handleCallback(token, q, db) {
     const lessonId = parseInt(data.split("_")[1]);
     const lesson = lessons[lessonId];
     
-    // بهبود متن صوتی با اضافه کردن نقاط و مکث‌های کوتاه برای خوانش طبیعی‌تر و کامل‌تر
     let textToRead = lesson.audioText || lesson.reading;
-    // افزودن مکث با قرار دادن نقاط و کاما بین خطوط جهت جلوگیری از تند خواندن
     textToRead = textToRead.replace(/\n/g, ". ");
 
     const cleanText = encodeURIComponent(textToRead);
-    // استفاده از پارامترهای بهینه‌تر برای سرویس صوت گوگل
     const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=es&client=tw-ob&ttsspeed=0.8`;
 
     await telegramFetch(token, "sendAudio", {
@@ -355,4 +422,4 @@ async function telegramFetch(token, method, body) {
     });
     return await res.json();
   } catch (e) {}
-}
+    }
