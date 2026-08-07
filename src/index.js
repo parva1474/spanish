@@ -181,7 +181,6 @@ export default {
     return new Response("OK");
   }
 };
-// ادامه بخش دوم فایل src/index.js
 
 function getPersistentKeyboard() {
   return {
@@ -394,26 +393,47 @@ async function handleCallback(token, q, db) {
     const lessonId = parseInt(data.split("_")[2]);
     const lesson = lessons[lessonId];
 
-    const hiddenVocab = lesson.phoneticVocab
-      ? `\n\n<tg-spoiler>${lesson.phoneticVocab}</tg-spoiler>`
-      : "";
+    const vocabWithSpoilers = (lesson.vocab || "")
+      .split("\n")
+      .map(line => {
+        const arrowIndex = line.indexOf("→");
+
+        if (arrowIndex === -1) {
+          return line;
+        }
+
+        const beforeArrow = line.substring(0, arrowIndex + 1);
+        const meaning = line.substring(arrowIndex + 1).trim();
+
+        return `${beforeArrow} <tg-spoiler>${meaning}</tg-spoiler>`;
+      })
+      .join("\n");
 
     await telegramFetch(token, "sendMessage", {
       chat_id: chatId,
       text:
         `📦 <b>واژه‌نامه / الفبا - ${lesson.title}</b>\n\n` +
-        `${lesson.vocab}` +
-        `${hiddenVocab}`,
+        vocabWithSpoilers,
       parse_mode: "HTML",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "➡️ مرحله بعد: ریدینگ متن", callback_data: `step_reading_${lessonId}` }],
-          [{ text: "🔙 بازگشت به منوی درس", callback_data: `menu_${lessonId}` }]
+          [
+            {
+              text: "➡️ مرحله بعد: ریدینگ متن",
+              callback_data: `step_reading_${lessonId}`
+            }
+          ],
+          [
+            {
+              text: "🔙 بازگشت به منوی درس",
+              callback_data: `menu_${lessonId}`
+            }
+          ]
         ]
       }
     });
-  }
-  else if (data.startsWith("step_reading_")) {
+      }
+    else if (data.startsWith("step_reading_")) {
     const lessonId = parseInt(data.split("_")[2]);
     const lesson = lessons[lessonId];
 
@@ -533,7 +553,7 @@ async function handleCallback(token, q, db) {
 
     await telegramFetch(token, "sendMessage", {
       chat_id: chatId,
-      text: `🎧 در حال آماده‌سازی تلفظ صوتی...\n\nتعداد بخش‌ها: ${chunks.length}`
+      text: `🎧 در حال آماده‌سازی و ارسال ${chunks.length} بخش صوتی...`
     });
 
     for (let i = 0; i < chunks.length; i++) {
@@ -548,31 +568,28 @@ async function handleCallback(token, q, db) {
 
         const audioResponse = await fetch(audioUrl, {
           headers: {
-            "User-Agent": "Mozilla/5.0"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
           }
         });
 
         if (!audioResponse.ok) {
-          console.error(
-            "Google TTS Error:",
-            audioResponse.status,
-            await audioResponse.text()
-          );
+          console.error("Google TTS Error:", audioResponse.status);
           continue;
         }
 
-        const audioBlob = await audioResponse.blob();
+        const arrayBuffer = await audioResponse.arrayBuffer();
+        const audioBlob = new Blob([arrayBuffer], { type: "audio/mpeg" });
 
         const form = new FormData();
         form.append("chat_id", String(chatId));
         form.append(
           "audio",
           audioBlob,
-          `spanish_${lessonId}_${i + 1}.mp3`
+          `audio_${lessonId}_part_${i + 1}.mp3`
         );
         form.append(
           "title",
-          `🎧 تلفظ متن - بخش ${i + 1} از ${chunks.length}`
+          `🎧 بخش ${i + 1} از ${chunks.length}`
         );
         form.append(
           "performer",
@@ -590,62 +607,41 @@ async function handleCallback(token, q, db) {
         const telegramResult = await telegramResponse.json();
 
         if (!telegramResult.ok) {
-          console.error(
-            "Telegram Audio Error:",
-            JSON.stringify(telegramResult)
-          );
+          console.error("Telegram Audio Error:", JSON.stringify(telegramResult));
         }
 
       } catch (err) {
         console.error("Audio Error:", err);
       }
     }
-  }
-  else if (data.startsWith("quiz_")) {
+      }
+    else if (data.startsWith("quiz_")) {
     const parts = data.split("_");
     const lessonId = parseInt(parts[1]);
-    const qIndex = parseInt(parts[2]) || 0;
+    const questionIndex = parseInt(parts[2]);
     const lesson = lessons[lessonId];
-    
-    if (!lesson.questions || lesson.questions.length === 0) {
-      await telegramFetch(token, "sendMessage", { chat_id: chatId, text: "آزمونی برای این درس ثبت نشده است." });
+
+    if (!lesson.quiz || questionIndex >= lesson.quiz.length) {
+      await telegramFetch(token, "sendMessage", {
+        chat_id: chatId,
+        text: "✅ تمام سوالات به پایان رسید! آفرین.",
+        reply_markup: {
+          inline_keyboard: [[{ text: "🔙 بازگشت به منوی درس", callback_data: `menu_${lessonId}` }]]
+        }
+      });
       return;
     }
 
-    const currentQ = lesson.questions[qIndex];
-
-    if (currentQ.type === "لیسنینگ" && currentQ.audioText) {
-      const cleanText = encodeURIComponent(currentQ.audioText);
-      const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=es&client=tw-ob&ttsspeed=0.8`;
-
-      const audioResponse = await fetch(audioUrl, {
-        headers: { "User-Agent": "Mozilla/5.0" }
-      });
-
-      if (audioResponse.ok) {
-        const audioBlob = await audioResponse.blob();
-        const form = new FormData();
-        form.append("chat_id", String(chatId));
-        form.append("audio", audioBlob, "listening_quiz.mp3");
-        form.append("title", "🎧 فایل صوتی آزمون لیسنینگ");
-        form.append("performer", "آکادمی آموزش زبان اسپانیایی");
-
-        await fetch(`https://api.telegram.org/bot${token}/sendAudio`, {
-          method: "POST",
-          body: form
-        });
-      }
-    }
-
-    const keyboard = [];
-    currentQ.options.forEach((opt, idx) => {
-      keyboard.push([{ text: opt, callback_data: `ans_${lessonId}_${qIndex}_${idx}` }]);
-    });
-    keyboard.push([{ text: "🔙 بازگشت به منوی درس", callback_data: `menu_${lessonId}` }]);
+    const q = lesson.quiz[questionIndex];
+    const keyboard = q.options.map((opt, idx) => [{
+      text: opt,
+      callback_data: `ans_${lessonId}_${questionIndex}_${idx}`
+    }]);
 
     await telegramFetch(token, "sendMessage", {
       chat_id: chatId,
-      text: `❓ **آزمون (${currentQ.type}) - سوال ${qIndex + 1} از ${lesson.questions.length}**\n\n${currentQ.text}`,
+      text: `✍️ **آزمون (${questionIndex + 1}/${lesson.quiz.length})**\n\n${q.question}`,
+      parse_mode: "Markdown",
       reply_markup: { inline_keyboard: keyboard }
     });
   }
@@ -653,70 +649,35 @@ async function handleCallback(token, q, db) {
     const parts = data.split("_");
     const lessonId = parseInt(parts[1]);
     const qIndex = parseInt(parts[2]);
-    const selected = parseInt(parts[3]);
+    const ansIndex = parseInt(parts[3]);
     const lesson = lessons[lessonId];
-    const currentQ = lesson.questions[qIndex];
-    
-    let resMsg = "";
-    let nextButtons = [];
-    
-    if (selected === currentQ.correct) {
-      resMsg = "✅ پاسخ شما درست است! 👏";
-      
-      if (qIndex + 1 < lesson.questions.length) {
-        nextButtons.push({ text: "➡️ سوال بعدی آزمون", callback_data: `quiz_${lessonId}_${qIndex + 1}` });
-      } else {
-        resMsg += "\n\n🎉 تبریک! آزمون این درس را به طور کامل با موفقیت به پایان رساندید.";
-        if (db) {
-          try {
-            await db.prepare(
-              "INSERT INTO users (chat_id, last_lesson) VALUES (?, ?) ON CONFLICT(chat_id) DO UPDATE SET last_lesson = ?"
-            ).bind(String(chatId), lessonId + 1, lessonId + 1).run();
-          } catch (e) {}
-        }
+    const q = lesson.quiz[qIndex];
 
-        if (lessonId + 1 < lessons.length) {
-          nextButtons.push({ text: "🚀 رفتن به درس بعدی", callback_data: `menu_${lessonId + 1}` });
-        } else {
-          nextButtons.push({ text: "🏠 بازگشت به منوی اصلی", callback_data: "menu_0" });
-        }
-      }
-    } else {
-      resMsg = `❌ پاسخ نادرست بود.\nپاسخ صحیح: ${currentQ.options[currentQ.correct]}`;
-      nextButtons.push({ text: "🔄 تکرار همین سوال", callback_data: `quiz_${lessonId}_${qIndex}` });
-      nextButtons.push({ text: "📖 مرور مجدد درس", callback_data: `menu_${lessonId}` });
-    }
+    const isCorrect = (ansIndex === q.correct);
+    const feedback = isCorrect ? "✅ درست بود! عالیه." : `❌ اشتباه بود.\n\nپاسخ صحیح: ${q.options[q.correct]}`;
 
     await telegramFetch(token, "sendMessage", {
       chat_id: chatId,
-      text: resMsg,
-      reply_markup: { inline_keyboard: [nextButtons] }
+      text: feedback,
+      reply_markup: {
+        inline_keyboard: [[
+          {
+            text: isCorrect ? "➡️ سوال بعدی" : "تلاش مجدد / سوال بعدی",
+            callback_data: `quiz_${lessonId}_${isCorrect ? qIndex + 1 : qIndex}`
+          }
+        ]]
+      }
     });
   }
-  
   await telegramFetch(token, "answerCallbackQuery", { callback_query_id: q.id });
 }
 
 async function telegramFetch(token, method, body) {
-  try {
-    const res = await fetch(
-      `https://api.telegram.org/bot${token}/${method}`,
-      {
-        "method": "POST",
-        "headers": { "Content-Type": "application/json" },
-        "body": JSON.stringify(body)
-      }
-    );
-
-    const data = await res.json();
-
-    if (!data.ok) {
-      console.error(`Telegram API Error [${method}]:`, JSON.stringify(data));
-    }
-
-    return data;
-  } catch (e) {
-    console.error(`Telegram Fetch Error [${method}]:`, e);
-    return null;
-  }
-      }
+  const url = `https://api.telegram.org/bot${token}/${method}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  return await response.json();
+}
