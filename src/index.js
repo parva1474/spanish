@@ -20,7 +20,6 @@ export default {
         const chatId = update.message.chat.id;
         const text = update.message.text.trim();
         
-        // 🚨 بررسی دستور تأیید کاربر (/approve)
         const approveMatch = text.match(/^\/approve(?:@\w+)?\s+(-?\d+)$/);
 
         if (approveMatch && String(chatId) === ADMIN_ID) {
@@ -66,7 +65,6 @@ export default {
           return new Response("OK");
         }
 
-        // 🚨 بررسی دستور لغو دسترسی کاربر (/revoke)
         const revokeMatch = text.match(/^\/revoke(?:@\w+)?\s+(-?\d+)$/);
 
         if (revokeMatch && String(chatId) === ADMIN_ID) {
@@ -414,9 +412,14 @@ async function handleCallback(token, q, db) {
   else if (data.startsWith("step_reading_")) {
     const lessonId = parseInt(data.split("_")[2]);
     const lesson = lessons[lessonId];
+    
+    // 🚨 اعمال اسپویلر (مخفی کردن ترجمه و تلفظ زیرنویس با قابلیت کلیک)
+    let readingText = lesson.reading;
+    let hiddenTranslation = lesson.phoneticReading ? `\n\n||${lesson.phoneticReading}||` : "";
+
     await telegramFetch(token, "sendMessage", {
       chat_id: chatId,
-      text: `📖 **ریدینگ و مکالمه - ${lesson.title}**:\n\n${lesson.reading}\n\n------------------\n${lesson.phoneticReading}`,
+      text: `📖 **ریدینگ و مکالمه - ${lesson.title}**:\n\n${readingText}${hiddenTranslation}`,
       parse_mode: "Markdown",
       reply_markup: {
         inline_keyboard: [
@@ -446,9 +449,10 @@ async function handleCallback(token, q, db) {
     const lessonId = parseInt(data.split("_")[1]);
     const lesson = lessons[lessonId];
     
+    // 🚨 رفع محدودیت طول صوت گوگل (برش هوشمند متن تا کاراکترهای بیشتر برای پوشش کامل ریدینگ)
     let textToRead = lesson.audioText || lesson.reading;
-    if (textToRead.length > 250) {
-      textToRead = textToRead.substring(0, 250);
+    if (textToRead.length > 500) {
+      textToRead = textToRead.substring(0, 500);
     }
     textToRead = textToRead.replace(/\n/g, ". ");
 
@@ -550,18 +554,10 @@ async function telegramFetch(token, method, body) {
     const res = await fetch(
       `https://api.telegram.org/bot${token}/${method}`,
       {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+        "method": "POST",
+        "headers": { "Content-Type": "application/json" },
+        "body": JSON.stringify(body)
       }
     );
 
-    const data = await res.json();
-
-    if (!data.ok) {
-      console.error(`Telegram API Error [${method}]:`, JSON.stringify(data));
-    }
-
-    return data;
-  } catch (e) {
-    console.error(`Telegram
+    const data = await r
