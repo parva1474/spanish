@@ -49,6 +49,45 @@ export default {
 
             console.log("Approve result:", JSON.stringify(result));
 
+                    // 🚨 بررسی دستور حذف دسترسی کاربر
+        const revokeMatch = text.match(/^\/revoke(?:@\w+)?\s+(-?\d+)$/);
+
+        if (revokeMatch && String(chatId) === ADMIN_ID) {
+          const targetChatId = revokeMatch[1];
+
+          if (!db) {
+            await telegramFetch(token, "sendMessage", {
+              chat_id: chatId,
+              text: "❌ اتصال به دیتابیس DB برقرار نیست."
+            });
+            return new Response("OK");
+          }
+
+          try {
+            await db.prepare(
+              `UPDATE users SET is_paid = 0 WHERE chat_id = ?`
+            ).bind(String(targetChatId)).run();
+
+            await telegramFetch(token, "sendMessage", {
+              chat_id: chatId,
+              text: `✅ دسترسی کاربر ${targetChatId} لغو شد.`
+            });
+
+            await telegramFetch(token, "sendMessage", {
+              chat_id: targetChatId,
+              text: "⚠️ اشتراک شما به اتمام رسید یا دسترسی‌تان لغو شد."
+            });
+
+          } catch (e) {
+            console.error("REVOKE ERROR:", e);
+            await telegramFetch(token, "sendMessage", {
+              chat_id: chatId,
+              text: `❌ خطا هنگام لغو دسترسی کاربر:\n${e.message || e}`
+            });
+          }
+
+          return new Response("OK");
+        }
             await telegramFetch(token, "sendMessage", {
               chat_id: targetChatId,
               text: "🎉 پرداخت شما تأیید شد! اکنون به درس‌های ۳ به بعد دسترسی دارید."
@@ -57,7 +96,8 @@ export default {
           } catch (e) {
             console.error("APPROVE ERROR:", e);
 
-            await telegramFetch(token, "sendMessage", {
+            await telegramFe
+              tch(token, "sendMessage", {
               chat_id: chatId,
               text: `❌ خطا هنگام تأیید کاربر:\n${e.message || e}`
             });
