@@ -20,14 +20,49 @@ export default {
         const chatId = update.message.chat.id;
         const text = update.message.text.trim();
         
-        // 🚨 بررسی دستور ادمین در همان خط اول (قبل از هرگونه چک کردن عضویت یا موارد دیگر)
-        if (text.startsWith("/approve ") && String(chatId) === ADMIN_ID) {
-          const targetChatId = text.split(" ")[1];
-          if (db) {
-            await db.prepare("INSERT INTO users (chat_id, is_paid) VALUES (?, 1) ON CONFLICT(chat_id) DO UPDATE SET is_paid = 1").bind(targetChatId).run();
+        // 🚨 بررسی دستور ادمین با ریجکس کامل و استاندارد در خط اول
+        const approveMatch = text.match(/^\/approve(?:@\w+)?\s+(-?\d+)$/);
+
+        if (approveMatch && String(chatId) === ADMIN_ID) {
+          const targetChatId = approveMatch[1];
+
+          if (!db) {
+            await telegramFetch(token, "sendMessage", {
+              chat_id: chatId,
+              text: "❌ اتصال به دیتابیس DB برقرار نیست."
+            });
+            return new Response("OK");
           }
-          await telegramFetch(token, "sendMessage", { chat_id: chatId, text: `✅ دسترسی کاربر ${targetChatId} فعال شد.` });
-          await telegramFetch(token, "sendMessage", { chat_id: targetChatId, text: `🎉 پرداخت شما تأیید شد! اکنون به درس‌های ۳ به بعد دسترسی دارید.` });
+
+          try {
+            await db.prepare(
+              `INSERT INTO users (chat_id, is_paid)
+               VALUES (?, 1)
+               ON CONFLICT(chat_id)
+               DO UPDATE SET is_paid = 1`
+            ).bind(String(targetChatId)).run();
+
+            const result = await telegramFetch(token, "sendMessage", {
+              chat_id: chatId,
+              text: `✅ دسترسی کاربر ${targetChatId} فعال شد.`
+            });
+
+            console.log("Approve result:", JSON.stringify(result));
+
+            await telegramFetch(token, "sendMessage", {
+              chat_id: targetChatId,
+              text: "🎉 پرداخت شما تأیید شد! اکنون به درس‌های ۳ به بعد دسترسی دارید."
+            });
+
+          } catch (e) {
+            console.error("APPROVE ERROR:", e);
+
+            await telegramFetch(token, "sendMessage", {
+              chat_id: chatId,
+              text: `❌ خطا هنگام تأیید کاربر:\n${e.message || e}`
+            });
+          }
+
           return new Response("OK");
         }
 
@@ -97,7 +132,6 @@ export default {
           return new Response("OK");
         }
 
-        // مدیریت صفحه‌بندی فهرست درس‌ها
         if (data.startsWith("lessons_page_")) {
           const page = parseInt(data.split("_")[2]);
           await editLessonList(token, chatId, q.message.message_id, page);
@@ -473,11 +507,24 @@ async function handleCallback(token, q, db) {
 
 async function telegramFetch(token, method, body) {
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-    return await res.json();
-  } catch (e) {}
-}
+    const res = await fetch(
+      `https://api.telegram.org/bot${token}/${method}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      }
+    );
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      console.error(`Telegram API Error [${method}]:`, JSON.stringify(data));
+    }
+
+    return data;
+  } catch (e) {
+    console.error(`Telegram Fetch Error [${method}]:`, e);
+    return null;
+  }
+  }
