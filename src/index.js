@@ -83,7 +83,14 @@ export default {
         if (data === "pay_info") {
           await telegramFetch(token, "sendMessage", {
             chat_id: chatId,
-            text: `💳 **راهنمای پرداخت:**\n\nجهت دسترسی به درس‌های ۳ به بعد، مبلغ اشتراک را به شماره کارت زیر واریز نمایید:\n\`0000-0000-0000-0000\`\n\nسپس تصویر رسید را به همراه آیدی عددی خود برای پشتیبانی ارسال کنید تا دسترسی شما سریعاً فعال شود.`,
+            text: `💳 **راهنمای پرداخت اشتراک:**\n\n` +
+                  `برای دسترسی به درس‌های ۳ به بعد، مبلغ موردنظر را به شماره کارت زیر واریز نمایید:\n\n` +
+                  `📌 \`6037997545103955\`\n` +
+                  `👤 **به نام:** بهروز\n\n` +
+                  `📥 **ارسال فیش و فعال‌سازی:**\n` +
+                  `پس از واریز، تصویر رسید را به همراه **آیدی عددی** خود به پشتیبانی (\`@parva1474\`) ارسال کنید.\n\n` +
+                  `🔍 **چگونه آیدی عددی خود را پیدا کنیم؟**\n` +
+                  `وارد ربات \`@userinfobot\` شوید، ربات به شما یک عدد چندرقمی می‌دهد؛ آن عدد را به همراه فیش واریزی برای پشتیبان بفرستید.`,
             parse_mode: "Markdown"
           });
           await telegramFetch(token, "answerCallbackQuery", { callback_query_id: q.id });
@@ -251,8 +258,6 @@ async function editLessonList(token, chatId, messageId, page) {
 }
 
 async function sendLessonMenu(token, chatId, lessonId, db) {
-  // بررسی قفل بودن درس‌های ۳ به بعد (ایندکس ۳ به بعد یعنی از درس چهارم به بعد، یا بر اساس نیاز شما از درس ۳ به بعد)
-  // در اینجا lessonId شماره ۲ یعنی درس ۳ (چون ایندکس از ۰ شروع می‌شود: ۰=الفبا، ۱=درس ۱، ۲=درس ۲، ۳=درس ۳)
   if (lessonId >= 2) {
     let isPaid = 0;
     if (db) {
@@ -475,4 +480,4 @@ async function telegramFetch(token, method, body) {
     });
     return await res.json();
   } catch (e) {}
-    }
+            }
