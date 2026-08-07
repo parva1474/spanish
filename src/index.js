@@ -120,8 +120,8 @@ export default {
             text: "لطفاً از دکمه‌های پایین صفحه استفاده کنید.",
             reply_markup: getPersistentKeyboard()
           });
-
-          } else if (update.callback_query) {
+        }
+      } else if (update.callback_query) {
         const q = update.callback_query;
         const chatId = q.message.chat.id;
         const data = q.data;
@@ -366,8 +366,7 @@ async function sendLessonMenu(token, chatId, lessonId, db) {
       ]
     }
   });
-}
-
+      }
 async function handleCallback(token, q, db) {
   const data = q.data;
   const chatId = q.message.chat.id;
@@ -657,6 +656,7 @@ async function handleCallback(token, q, db) {
         });
       }
     }
+
     const keyboard = [];
     currentQ.options.forEach((opt, idx) => {
       keyboard.push([{ text: opt, callback_data: `ans_${lessonId}_${qIndex}_${idx}` }]);
