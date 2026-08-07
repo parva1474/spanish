@@ -408,19 +408,39 @@ async function handleCallback(token, q, db) {
   else if (data.startsWith("step_reading_")) {
     const lessonId = parseInt(data.split("_")[2]);
     const lesson = lessons[lessonId];
-    
+
     let readingText = lesson.reading;
-    let hiddenTranslation = lesson.phoneticReading ? `\n\n||${lesson.phoneticReading}||` : "";
+    let hiddenTranslation = lesson.phoneticReading
+      ? `\n\n<tg-spoiler>${lesson.phoneticReading}</tg-spoiler>`
+      : "";
 
     await telegramFetch(token, "sendMessage", {
       chat_id: chatId,
-      text: `📖 **ریدینگ و مکالمه - ${lesson.title}**:\n\n${readingText}${hiddenTranslation}`,
-      parse_mode: "Markdown",
+      text:
+        `📖 <b>ریدینگ و مکالمه - ${lesson.title}</b>\n\n` +
+        `${readingText}` +
+        `${hiddenTranslation}`,
+      parse_mode: "HTML",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "🗣 پخش تلفظ صوتی این متن (دو بخش)", callback_data: `audio_${lessonId}` }],
-          [{ text: "➡️ مرحله بعد: تحلیل و گرامر", callback_data: `step_analysis_${lessonId}` }],
-          [{ text: "🔙 بازگشت به منوی درس", callback_data: `menu_${lessonId}` }]
+          [
+            {
+              text: "🗣 پخش تلفظ صوتی این متن (چند بخش)",
+              callback_data: `audio_${lessonId}`
+            }
+          ],
+          [
+            {
+              text: "➡️ مرحله بعد: تحلیل و گرامر",
+              callback_data: `step_analysis_${lessonId}`
+            }
+          ],
+          [
+            {
+              text: "🔙 بازگشت به منوی درس",
+              callback_data: `menu_${lessonId}`
+            }
+          ]
         ]
       }
     });
@@ -443,34 +463,58 @@ async function handleCallback(token, q, db) {
   else if (data.startsWith("audio_")) {
     const lessonId = parseInt(data.split("_")[1]);
     const lesson = lessons[lessonId];
-    
-    let fullText = lesson.audioText || lesson.reading;
-    fullText = fullText.replace(/\n/g, ". ");
 
-    // تقسیم متن به دو بخش برای ارسال دو فایل صوتی مجزا جهت حل کامل مشکل محدودیت زمان/کاراکتر
-    let midIndex = Math.floor(fullText.length / 2);
-    // پیدا کردن اولین نقطه نزدیک وسط برای برش تمیزتر جمله
-    let splitPoint = fullText.indexOf('.', midIndex);
-    if (splitPoint === -1) splitPoint = midIndex; else splitPoint += 1;
-
-    let part1 = fullText.substring(0, splitPoint).trim();
-    let part2 = fullText.substring(splitPoint).trim();
-
-    if (part1) {
-      const audioUrl1 = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(part1)}&tl=es&client=tw-ob&ttsspeed=0.8`;
-      await telegramFetch(token, "sendAudio", {
+    if (!lesson) {
+      await telegramFetch(token, "sendMessage", {
         chat_id: chatId,
-        audio: audioUrl1,
-        title: `تلفظ صوتی (بخش اول) - ${lesson.title}`
+        text: "❌ درس پیدا نشد."
       });
+      return;
     }
 
-    if (part2) {
-      const audioUrl2 = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(part2)}&tl=es&client=tw-ob&ttsspeed=0.8`;
+    let fullText = lesson.audioText || lesson.reading;
+
+    fullText = fullText
+      .replace(/\n+/g, ". ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const chunks = [];
+    let remaining = fullText;
+
+    while (remaining.length > 0) {
+      if (remaining.length <= 180) {
+        chunks.push(remaining);
+        break;
+      }
+
+      let cut = remaining.lastIndexOf(".", 180);
+
+      if (cut < 80) {
+        cut = remaining.lastIndexOf(" ", 180);
+      }
+
+      if (cut <= 0) {
+        cut = 180;
+      }
+
+      chunks.push(remaining.substring(0, cut + 1).trim());
+      remaining = remaining.substring(cut + 1).trim();
+    }
+
+    for (let i = 0; i < chunks.length; i++) {
+      const audioUrl =
+        `https://translate.google.com/translate_tts` +
+        `?ie=UTF-8` +
+        `&q=${encodeURIComponent(chunks[i])}` +
+        `&tl=es` +
+        `&client=tw-ob` +
+        `&ttsspeed=0.8`;
+
       await telegramFetch(token, "sendAudio", {
         chat_id: chatId,
-        audio: audioUrl2,
-        title: `تلفظ صوتی (بخش دوم) - ${lesson.title}`
+        audio: audioUrl,
+        title: `🎧 تلفظ صوتی - بخش ${i + 1} از ${chunks.length}`
       });
     }
   }
@@ -580,4 +624,4 @@ async function telegramFetch(token, method, body) {
     console.error(`Telegram Fetch Error [${method}]:`, e);
     return null;
   }
-        }
+                             }
