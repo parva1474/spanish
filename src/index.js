@@ -3,7 +3,7 @@ import { lessons } from './lessons.js';
 
 const CHANNEL_1 = "@nwechannell"; 
 const CHANNEL_2 = "@parvapoem"; 
-const ADMIN_ID = "109710949"; // آیدی عددی خودتان را اینجا بگذارید
+const ADMIN_ID = "109710949"; // آیدی عددی شما
 
 export default {
   async fetch(request, env, ctx) {
@@ -23,94 +23,14 @@ export default {
         // دستور ادمین برای تایید پرداخت
         if (text.startsWith("/approve ") && String(chatId) === ADMIN_ID) {
           const targetChatId = text.split(" ")[1];
-          await db.prepare("INSERT INTO users (chat_id, is_paid) VALUES (?, 1) ON CONFLICT(chat_id) DO UPDATE SET is_paid = 1").bind(targetChatId).run();
-          await telegramFetch(token, "sendMessage", { chat_id: chatId, text: `✅ دسترسی ${targetChatId} فعال شد.` });
+          if (db) {
+            await db.prepare("INSERT INTO users (chat_id, is_paid) VALUES (?, 1) ON CONFLICT(chat_id) DO UPDATE SET is_paid = 1").bind(targetChatId).run();
+          }
+          await telegramFetch(token, "sendMessage", { chat_id: chatId, text: `✅ دسترسی کاربر ${targetChatId} فعال شد.` });
           await telegramFetch(token, "sendMessage", { chat_id: targetChatId, text: `🎉 پرداخت شما تأیید شد! اکنون به درس‌های ۳ به بعد دسترسی دارید.` });
           return new Response("OK");
         }
 
-        const isMember = await checkUserMembership(token, chatId);
-        if (!isMember) return new Response("OK");
-
-        if (text.startsWith("/start") || text === "🏠 منوی اصلی") {
-          await handleStart(token, chatId, db);
-        } else if (text === "🚀 ادامه یادگیری (پنل درس‌ها)") {
-          await handleQuickMenu(token, chatId, db);
-        } else if (text === "📚 فهرست کامل درس‌ها") {
-          await showLessonList(token, chatId, 1);
-        }
-      } else if (update.callback_query) {
-        const q = update.callback_query;
-        const chatId = q.message.chat.id;
-        const data = q.data;
-
-        if (data === "pay_info") {
-          await telegramFetch(token, "sendMessage", {
-            chat_id: chatId,
-            text: `💳 **راهنمای پرداخت:**\n\nجهت دسترسی به درس‌های ۳ تا ۶۱، مبلغ اشتراک را به شماره کارت زیر واریز نمایید:\n\`0000-0000-0000-0000\`\nسپس رسید را به @SUPPORT_USERNAME ارسال کنید.`,
-            parse_mode: "Markdown"
-          });
-        } else if (data.startsWith("lesson_")) {
-           const lessonId = parseInt(data.split("_")[1]) - 1;
-           await sendLessonMenu(token, chatId, lessonId, db);
-        } else if (data.startsWith("menu_")) {
-           const lessonId = parseInt(data.split("_")[1]);
-           await sendLessonMenu(token, chatId, lessonId, db);
-        } else {
-           await handleCallback(token, q, db);
-        }
-      }
-    } catch (err) { console.error("Error:", err); }
-    return new Response("OK");
-  }
-};
-
-async function sendLessonMenu(token, chatId, lessonId, db) {
-  // درس‌های ۱ و ۲ و الفبا (ایندکس ۰، ۱، ۲) رایگان هستند
-  if (lessonId >= 3) {
-    let isPaid = 0;
-    try {
-      const { results } = await db.prepare("SELECT is_paid FROM users WHERE chat_id = ?").bind(String(chatId)).all();
-      if (results.length > 0) isPaid = results[0].is_paid;
-    } catch (e) {}
-
-    if (!isPaid) {
-      await telegramFetch(token, "sendMessage", {
-        chat_id: chatId,
-        text: `🔒 **محتوای ویژه**\nبرای دسترسی به این درس، باید اشتراک خود را فعال کنید.`,
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "💳 اطلاعات پرداخت", callback_data: "pay_info" }],
-            [{ text: "🔙 بازگشت", callback_data: "menu_0" }]
-          ]
-        }
-      });
-      return;
-    }
-  }
-
-  const lesson = lessons[lessonId] || lessons[0];
-  await telegramFetch(token, "sendMessage", {
-    chat_id: chatId,
-    text: `📖 **${lesson.title}**`,
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: "📦 واژه‌نامه", callback_data: `step_vocab_${lessonId}` }],
-        [{ text: "📖 ریدینگ", callback_data: `step_reading_${lessonId}` }],
-        [{ text: "💡 گرامر", callback_data: `step_analysis_${lessonId}` }],
-        [{ text: "✍️ آزمون", callback_data: `quiz_${lessonId}_0` }]
-      ]
-    }
-  });
-}
-
-// ... باقی توابع (telegramFetch, handleCallback, checkUserMembership) مثل قبل باقی می‌مانند
-      if (!token) return new Response("OK");
-
-      if (update.message && update.message.text) {
-        const chatId = update.message.chat.id;
-        const text = update.message.text.trim();
-        
         const isMember = await checkUserMembership(token, chatId);
         if (!isMember) return new Response("OK");
 
@@ -134,21 +54,22 @@ async function sendLessonMenu(token, chatId, lessonId, db) {
           });
         }
       } else if (update.callback_query) {
-        const chatId = update.callback_query.message.chat.id;
-        const data = update.callback_query.data;
+        const q = update.callback_query;
+        const chatId = q.message.chat.id;
+        const data = q.data;
         
         if (data === "check_membership") {
           const isMember = await checkUserMembership(token, chatId);
           if (isMember) {
             await telegramFetch(token, "answerCallbackQuery", { 
-              callback_query_id: update.callback_query.id, 
+              callback_query_id: q.id, 
               text: "عضویت شما تأیید شد! خوش آمدید 🎉",
               show_alert: true 
             });
             await handleStart(token, chatId, db);
           } else {
             await telegramFetch(token, "answerCallbackQuery", { 
-              callback_query_id: update.callback_query.id, 
+              callback_query_id: q.id, 
               text: "شما هنوز در هر دو کانال عضو نشده‌اید!", 
               show_alert: true 
             });
@@ -159,15 +80,25 @@ async function sendLessonMenu(token, chatId, lessonId, db) {
         const isMember = await checkUserMembership(token, chatId);
         if (!isMember) return new Response("OK");
 
-        // مدیریت صفحه‌بندی فهرست درس‌ها
-        if (data.startsWith("lessons_page_")) {
-          const page = parseInt(data.split("_")[2]);
-          await editLessonList(token, chatId, update.callback_query.message.message_id, page);
-          await telegramFetch(token, "answerCallbackQuery", { callback_query_id: update.callback_query.id });
+        if (data === "pay_info") {
+          await telegramFetch(token, "sendMessage", {
+            chat_id: chatId,
+            text: `💳 **راهنمای پرداخت:**\n\nجهت دسترسی به درس‌های ۳ به بعد، مبلغ اشتراک را به شماره کارت زیر واریز نمایید:\n\`0000-0000-0000-0000\`\n\nسپس تصویر رسید را به همراه آیدی عددی خود برای پشتیبانی ارسال کنید تا دسترسی شما سریعاً فعال شود.`,
+            parse_mode: "Markdown"
+          });
+          await telegramFetch(token, "answerCallbackQuery", { callback_query_id: q.id });
           return new Response("OK");
         }
 
-        await handleCallback(token, update.callback_query, db);
+        // مدیریت صفحه‌بندی فهرست درس‌ها
+        if (data.startsWith("lessons_page_")) {
+          const page = parseInt(data.split("_")[2]);
+          await editLessonList(token, chatId, q.message.message_id, page);
+          await telegramFetch(token, "answerCallbackQuery", { callback_query_id: q.id });
+          return new Response("OK");
+        }
+
+        await handleCallback(token, q, db);
       }
     } catch (err) {
       console.error("Error:", err);
@@ -239,7 +170,7 @@ async function handleStart(token, chatId, db) {
     reply_markup: getPersistentKeyboard()
   });
 
-  await sendLessonMenu(token, chatId, progress);
+  await sendLessonMenu(token, chatId, progress, db);
 }
 
 async function handleQuickMenu(token, chatId, db) {
@@ -253,7 +184,7 @@ async function handleQuickMenu(token, chatId, db) {
     } catch (e) {}
   }
   if (progress >= lessons.length) progress = lessons.length - 1;
-  await sendLessonMenu(token, chatId, progress);
+  await sendLessonMenu(token, chatId, progress, db);
 }
 
 function getLessonsKeyboard(page = 1) {
@@ -263,10 +194,10 @@ function getLessonsKeyboard(page = 1) {
     keyboard = [
       [{ text: "الفبای اسپانیایی", callback_data: "lesson_alphabet" }],
       [{ text: "درس ۱", callback_data: "lesson_1" }, { text: "درس ۲", callback_data: "lesson_2" }],
-      [{ text: "درس ۳", callback_data: "lesson_3" }, { text: "درس ۴", callback_data: "lesson_4" }],
-      [{ text: "درس ۵", callback_data: "lesson_5" }, { text: "درس ۶", callback_data: "lesson_6" }],
-      [{ text: "درس ۷", callback_data: "lesson_7" }, { text: "درس ۸", callback_data: "lesson_8" }],
-      [{ text: "درس ۹", callback_data: "lesson_9" }, { text: "درس ۱۰", callback_data: "lesson_10" }],
+      [{ text: "درس ۳ 🔒", callback_data: "lesson_3" }, { text: "درس ۴ 🔒", callback_data: "lesson_4" }],
+      [{ text: "درس ۵ 🔒", callback_data: "lesson_5" }, { text: "درس ۶ 🔒", callback_data: "lesson_6" }],
+      [{ text: "درس ۷ 🔒", callback_data: "lesson_7" }, { text: "درس ۸ 🔒", callback_data: "lesson_8" }],
+      [{ text: "درس ۹ 🔒", callback_data: "lesson_9" }, { text: "درس ۱۰ 🔒", callback_data: "lesson_10" }],
       [{ text: "➡️ صفحه بعد", callback_data: "lessons_page_2" }]
     ];
   } else {
@@ -275,7 +206,7 @@ function getLessonsKeyboard(page = 1) {
     let row = [];
     
     for (let i = startLesson; i <= endLesson; i++) {
-      row.push({ text: `درس ${i}`, callback_data: `lesson_${i}` });
+      row.push({ text: `درس ${i} 🔒`, callback_data: `lesson_${i}` });
       if (row.length === 2) {
         keyboard.push(row);
         row = [];
@@ -303,7 +234,8 @@ function getLessonsKeyboard(page = 1) {
 async function showLessonList(token, chatId, page = 1) {
   await telegramFetch(token, "sendMessage", {
     chat_id: chatId,
-    text: `📚 فهرست کامل درس‌ها (صفحه ${page}):`,
+    text: `📚 فهرست کامل درس‌ها (صفحه ${page}):\n*(درس‌های ۳ به بعد نیازمند اشتراک هستند)*`,
+    parse_mode: "Markdown",
     reply_markup: getLessonsKeyboard(page)
   });
 }
@@ -312,12 +244,42 @@ async function editLessonList(token, chatId, messageId, page) {
   await telegramFetch(token, "editMessageText", {
     chat_id: chatId,
     message_id: messageId,
-    text: `📚 فهرست کامل درس‌ها (صفحه ${page}):`,
+    text: `📚 فهرست کامل درس‌ها (صفحه ${page}):\n*(درس‌های ۳ به بعد نیازمند اشتراک هستند)*`,
+    parse_mode: "Markdown",
     reply_markup: getLessonsKeyboard(page)
   });
 }
 
-async function sendLessonMenu(token, chatId, lessonId) {
+async function sendLessonMenu(token, chatId, lessonId, db) {
+  // بررسی قفل بودن درس‌های ۳ به بعد (ایندکس ۳ به بعد یعنی از درس چهارم به بعد، یا بر اساس نیاز شما از درس ۳ به بعد)
+  // در اینجا lessonId شماره ۲ یعنی درس ۳ (چون ایندکس از ۰ شروع می‌شود: ۰=الفبا، ۱=درس ۱، ۲=درس ۲، ۳=درس ۳)
+  if (lessonId >= 2) {
+    let isPaid = 0;
+    if (db) {
+      try {
+        const { results } = await db.prepare("SELECT is_paid FROM users WHERE chat_id = ?").bind(String(chatId)).all();
+        if (results && results.length > 0) {
+          isPaid = results[0].is_paid;
+        }
+      } catch (e) {}
+    }
+
+    if (!isPaid) {
+      await telegramFetch(token, "sendMessage", {
+        chat_id: chatId,
+        text: `🔒 **محتوای ویژه و قفل‌شده**\n\nبرای دسترسی کامل به درس ۳ و باقی آموزش‌ها، لطفاً اشتراک خود را فعال کنید.`,
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "💳 اطلاعات پرداخت و خرید اشتراک", callback_data: "pay_info" }],
+            [{ text: "🔙 بازگشت به درس‌های رایگان", callback_data: "menu_0" }]
+          ]
+        }
+      });
+      return;
+    }
+  }
+
   const lesson = lessons[lessonId] || lessons[0];
   await telegramFetch(token, "sendMessage", {
     chat_id: chatId,
@@ -342,18 +304,18 @@ async function handleCallback(token, q, db) {
     await showLessonList(token, chatId, 1);
   } 
   else if (data === "lesson_alphabet") {
-    await sendLessonMenu(token, chatId, 0);
+    await sendLessonMenu(token, chatId, 0, db);
   }
   else if (data.startsWith("lesson_")) {
     const lessonNum = parseInt(data.split("_")[1]);
     const lessonId = lessonNum - 1;
     if (lessons[lessonId]) {
-      await sendLessonMenu(token, chatId, lessonId);
+      await sendLessonMenu(token, chatId, lessonId, db);
     }
   }
   else if (data.startsWith("menu_")) {
     const lessonId = parseInt(data.split("_")[1]);
-    await sendLessonMenu(token, chatId, lessonId);
+    await sendLessonMenu(token, chatId, lessonId, db);
   }
   else if (data.startsWith("step_vocab_")) {
     const lessonId = parseInt(data.split("_")[2]);
@@ -513,4 +475,4 @@ async function telegramFetch(token, method, body) {
     });
     return await res.json();
   } catch (e) {}
-                                         }
+    }
