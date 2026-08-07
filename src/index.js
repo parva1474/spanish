@@ -3,18 +3,108 @@ import { lessons } from './lessons.js';
 
 const CHANNEL_1 = "@nwechannell"; 
 const CHANNEL_2 = "@parvapoem"; 
+const ADMIN_ID = "123456789"; // آیدی عددی خودتان را اینجا بگذارید
 
 export default {
   async fetch(request, env, ctx) {
-    if (request.method !== "POST") {
-      return new Response("Bot is active");
-    }
+    if (request.method !== "POST") return new Response("Bot is active");
     
     try {
       const update = await request.json();
       const token = env.Spanishtoken;
       const db = env.DB;
       
+      if (!token) return new Response("OK");
+
+      if (update.message && update.message.text) {
+        const chatId = update.message.chat.id;
+        const text = update.message.text.trim();
+        
+        // دستور ادمین برای تایید پرداخت
+        if (text.startsWith("/approve ") && String(chatId) === ADMIN_ID) {
+          const targetChatId = text.split(" ")[1];
+          await db.prepare("INSERT INTO users (chat_id, is_paid) VALUES (?, 1) ON CONFLICT(chat_id) DO UPDATE SET is_paid = 1").bind(targetChatId).run();
+          await telegramFetch(token, "sendMessage", { chat_id: chatId, text: `✅ دسترسی ${targetChatId} فعال شد.` });
+          await telegramFetch(token, "sendMessage", { chat_id: targetChatId, text: `🎉 پرداخت شما تأیید شد! اکنون به درس‌های ۳ به بعد دسترسی دارید.` });
+          return new Response("OK");
+        }
+
+        const isMember = await checkUserMembership(token, chatId);
+        if (!isMember) return new Response("OK");
+
+        if (text.startsWith("/start") || text === "🏠 منوی اصلی") {
+          await handleStart(token, chatId, db);
+        } else if (text === "🚀 ادامه یادگیری (پنل درس‌ها)") {
+          await handleQuickMenu(token, chatId, db);
+        } else if (text === "📚 فهرست کامل درس‌ها") {
+          await showLessonList(token, chatId, 1);
+        }
+      } else if (update.callback_query) {
+        const q = update.callback_query;
+        const chatId = q.message.chat.id;
+        const data = q.data;
+
+        if (data === "pay_info") {
+          await telegramFetch(token, "sendMessage", {
+            chat_id: chatId,
+            text: `💳 **راهنمای پرداخت:**\n\nجهت دسترسی به درس‌های ۳ تا ۶۱، مبلغ اشتراک را به شماره کارت زیر واریز نمایید:\n\`0000-0000-0000-0000\`\nسپس رسید را به @SUPPORT_USERNAME ارسال کنید.`,
+            parse_mode: "Markdown"
+          });
+        } else if (data.startsWith("lesson_")) {
+           const lessonId = parseInt(data.split("_")[1]) - 1;
+           await sendLessonMenu(token, chatId, lessonId, db);
+        } else if (data.startsWith("menu_")) {
+           const lessonId = parseInt(data.split("_")[1]);
+           await sendLessonMenu(token, chatId, lessonId, db);
+        } else {
+           await handleCallback(token, q, db);
+        }
+      }
+    } catch (err) { console.error("Error:", err); }
+    return new Response("OK");
+  }
+};
+
+async function sendLessonMenu(token, chatId, lessonId, db) {
+  // درس‌های ۱ و ۲ و الفبا (ایندکس ۰، ۱، ۲) رایگان هستند
+  if (lessonId >= 3) {
+    let isPaid = 0;
+    try {
+      const { results } = await db.prepare("SELECT is_paid FROM users WHERE chat_id = ?").bind(String(chatId)).all();
+      if (results.length > 0) isPaid = results[0].is_paid;
+    } catch (e) {}
+
+    if (!isPaid) {
+      await telegramFetch(token, "sendMessage", {
+        chat_id: chatId,
+        text: `🔒 **محتوای ویژه**\nبرای دسترسی به این درس، باید اشتراک خود را فعال کنید.`,
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "💳 اطلاعات پرداخت", callback_data: "pay_info" }],
+            [{ text: "🔙 بازگشت", callback_data: "menu_0" }]
+          ]
+        }
+      });
+      return;
+    }
+  }
+
+  const lesson = lessons[lessonId] || lessons[0];
+  await telegramFetch(token, "sendMessage", {
+    chat_id: chatId,
+    text: `📖 **${lesson.title}**`,
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "📦 واژه‌نامه", callback_data: `step_vocab_${lessonId}` }],
+        [{ text: "📖 ریدینگ", callback_data: `step_reading_${lessonId}` }],
+        [{ text: "💡 گرامر", callback_data: `step_analysis_${lessonId}` }],
+        [{ text: "✍️ آزمون", callback_data: `quiz_${lessonId}_0` }]
+      ]
+    }
+  });
+}
+
+// ... باقی توابع (telegramFetch, handleCallback, checkUserMembership) مثل قبل باقی می‌مانند
       if (!token) return new Response("OK");
 
       if (update.message && update.message.text) {
