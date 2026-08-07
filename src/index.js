@@ -393,10 +393,18 @@ async function handleCallback(token, q, db) {
   else if (data.startsWith("step_vocab_")) {
     const lessonId = parseInt(data.split("_")[2]);
     const lesson = lessons[lessonId];
+
+    const hiddenVocab = lesson.phoneticVocab
+      ? `\n\n<tg-spoiler>${lesson.phoneticVocab}</tg-spoiler>`
+      : "";
+
     await telegramFetch(token, "sendMessage", {
       chat_id: chatId,
-      text: `📦 **واژه‌نامه / الفبا - ${lesson.title}**:\n\n${lesson.vocab}\n\n------------------\n${lesson.phoneticVocab}`,
-      parse_mode: "Markdown",
+      text:
+        `📦 <b>واژه‌نامه / الفبا - ${lesson.title}</b>\n\n` +
+        `${lesson.vocab}` +
+        `${hiddenVocab}`,
+      parse_mode: "HTML",
       reply_markup: {
         inline_keyboard: [
           [{ text: "➡️ مرحله بعد: ریدینگ متن", callback_data: `step_reading_${lessonId}` }],
@@ -475,47 +483,122 @@ async function handleCallback(token, q, db) {
     let fullText = lesson.audioText || lesson.reading;
 
     fullText = fullText
-      .replace(/\n+/g, ". ")
+      .replace(/\r?\n+/g, " ")
       .replace(/\s+/g, " ")
       .trim();
+
+    if (!fullText) {
+      await telegramFetch(token, "sendMessage", {
+        chat_id: chatId,
+        text: "❌ متن صوتی این درس وجود ندارد."
+      });
+      return;
+    }
 
     const chunks = [];
     let remaining = fullText;
 
     while (remaining.length > 0) {
-      if (remaining.length <= 180) {
-        chunks.push(remaining);
+      if (remaining.length <= 150) {
+        chunks.push(remaining.trim());
         break;
       }
 
-      let cut = remaining.lastIndexOf(".", 180);
+      let cut = -1;
+      const punctuation = [".", "!", "?", "¿", "¡"];
 
-      if (cut < 80) {
-        cut = remaining.lastIndexOf(" ", 180);
+      for (const p of punctuation) {
+        const index = remaining.lastIndexOf(p, 150);
+        if (index > cut) {
+          cut = index;
+        }
+      }
+
+      if (cut < 60) {
+        cut = remaining.lastIndexOf(" ", 150);
       }
 
       if (cut <= 0) {
-        cut = 180;
+        cut = 150;
       }
 
-      chunks.push(remaining.substring(0, cut + 1).trim());
+      const part = remaining.substring(0, cut + 1).trim();
+
+      if (part) {
+        chunks.push(part);
+      }
+
       remaining = remaining.substring(cut + 1).trim();
     }
 
-    for (let i = 0; i < chunks.length; i++) {
-      const audioUrl =
-        `https://translate.google.com/translate_tts` +
-        `?ie=UTF-8` +
-        `&q=${encodeURIComponent(chunks[i])}` +
-        `&tl=es` +
-        `&client=tw-ob` +
-        `&ttsspeed=0.8`;
+    await telegramFetch(token, "sendMessage", {
+      chat_id: chatId,
+      text: `🎧 در حال آماده‌سازی تلفظ صوتی...\n\nتعداد بخش‌ها: ${chunks.length}`
+    });
 
-      await telegramFetch(token, "sendAudio", {
-        chat_id: chatId,
-        audio: audioUrl,
-        title: `🎧 تلفظ صوتی - بخش ${i + 1} از ${chunks.length}`
-      });
+    for (let i = 0; i < chunks.length; i++) {
+      try {
+        const audioUrl =
+          `https://translate.google.com/translate_tts` +
+          `?ie=UTF-8` +
+          `&q=${encodeURIComponent(chunks[i])}` +
+          `&tl=es` +
+          `&client=tw-ob` +
+          `&ttsspeed=0.8`;
+
+        const audioResponse = await fetch(audioUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0"
+          }
+        });
+
+        if (!audioResponse.ok) {
+          console.error(
+            "Google TTS Error:",
+            audioResponse.status,
+            await audioResponse.text()
+          );
+          continue;
+        }
+
+        const audioBlob = await audioResponse.blob();
+
+        const form = new FormData();
+        form.append("chat_id", String(chatId));
+        form.append(
+          "audio",
+          audioBlob,
+          `spanish_${lessonId}_${i + 1}.mp3`
+        );
+        form.append(
+          "title",
+          `🎧 تلفظ متن - بخش ${i + 1} از ${chunks.length}`
+        );
+        form.append(
+          "performer",
+          "آکادمی آموزش زبان اسپانیایی"
+        );
+
+        const telegramResponse = await fetch(
+          `https://api.telegram.org/bot${token}/sendAudio`,
+          {
+            method: "POST",
+            body: form
+          }
+        );
+
+        const telegramResult = await telegramResponse.json();
+
+        if (!telegramResult.ok) {
+          console.error(
+            "Telegram Audio Error:",
+            JSON.stringify(telegramResult)
+          );
+        }
+
+      } catch (err) {
+        console.error("Audio Error:", err);
+      }
     }
   }
   else if (data.startsWith("quiz_")) {
@@ -535,11 +618,23 @@ async function handleCallback(token, q, db) {
       const cleanText = encodeURIComponent(currentQ.audioText);
       const audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${cleanText}&tl=es&client=tw-ob&ttsspeed=0.8`;
 
-      await telegramFetch(token, "sendAudio", {
-        chat_id: chatId,
-        audio: audioUrl,
-        title: "🎧 فایل صوتی آزمون لیسنینگ"
+      const audioResponse = await fetch(audioUrl, {
+        headers: { "User-Agent": "Mozilla/5.0" }
       });
+
+      if (audioResponse.ok) {
+        const audioBlob = await audioResponse.blob();
+        const form = new FormData();
+        form.append("chat_id", String(chatId));
+        form.append("audio", audioBlob, "listening_quiz.mp3");
+        form.append("title", "🎧 فایل صوتی آزمون لیسنینگ");
+        form.append("performer", "آکادمی آموزش زبان اسپانیایی");
+
+        await fetch(`https://api.telegram.org/bot${token}/sendAudio`, {
+          method: "POST",
+          body: form
+        });
+      }
     }
 
     const keyboard = [];
@@ -624,4 +719,4 @@ async function telegramFetch(token, method, body) {
     console.error(`Telegram Fetch Error [${method}]:`, e);
     return null;
   }
-                             }
+      }
