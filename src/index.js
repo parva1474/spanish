@@ -166,7 +166,6 @@ async function handleQuickMenu(token, chatId, db) {
   await sendLessonMenu(token, chatId, progress);
 }
 
-// تابع ساخت کیبورد صفحه‌بندی شده برای ۶۱ درس (بدون نمایش توضیحات طولانی در دکمه‌ها)
 function getLessonsKeyboard(page = 1) {
   let keyboard = [];
   
@@ -253,12 +252,11 @@ async function handleCallback(token, q, db) {
     await showLessonList(token, chatId, 1);
   } 
   else if (data === "lesson_alphabet") {
-    // فرض بر این است که الفبا جایگاه خاصی دارد یا اولین مورد است
     await sendLessonMenu(token, chatId, 0);
   }
   else if (data.startsWith("lesson_")) {
     const lessonNum = parseInt(data.split("_")[1]);
-    const lessonId = lessonNum - 1; // تطبیق شماره درس با ایندکس آرایه
+    const lessonId = lessonNum - 1;
     if (lessons[lessonId]) {
       await sendLessonMenu(token, chatId, lessonId);
     }
@@ -318,6 +316,9 @@ async function handleCallback(token, q, db) {
     const lesson = lessons[lessonId];
     
     let textToRead = lesson.audioText || lesson.reading;
+    if (textToRead.length > 250) {
+      textToRead = textToRead.substring(0, 250);
+    }
     textToRead = textToRead.replace(/\n/g, ". ");
 
     const cleanText = encodeURIComponent(textToRead);
@@ -422,4 +423,4 @@ async function telegramFetch(token, method, body) {
     });
     return await res.json();
   } catch (e) {}
-    }
+                                         }
